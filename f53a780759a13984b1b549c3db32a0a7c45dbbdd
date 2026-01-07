@@ -1,0 +1,27 @@
+src/cli.ts
+  57f90266af10d4d6 17,26,483-488,490
+src/publish.ts
+  57f90266af10d4d6 122-130,134,147-160,164-169
+src/auth.ts
+  57f90266af10d4d6 2-3,64-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.29",
+  "base_commit_sha": "f53a780759a13984b1b549c3db32a0a7c45dbbdd",
+  "prompts": {
+    "57f90266af10d4d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "531ac506-89cb-4eec-94bd-d12d6d9959da",
+        "model": "claude-opus-4-5-20251101"
+      },
+      "human_author": "Zachary Davison <zachary.davison@meetsmore.com>",
+      "messages": [],
+      "total_additions": 49,
+      "total_deletions": 6,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    }
+  }
+}
