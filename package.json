@@ -1,6 +1,6 @@
 {
   "name": "pubz",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Interactive CLI for publishing npm packages (single or monorepo)",
   "type": "module",
   "bin": {
