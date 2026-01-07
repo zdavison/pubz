@@ -125,7 +125,7 @@ function isOtpError(output: string): boolean {
 
 export interface PublishContext {
   otp: string;
-  onOtpRequired?: () => Promise<string>;
+  onAuthRequired?: (registry: string) => Promise<boolean>;
 }
 
 export async function publishPackage(
@@ -149,13 +149,15 @@ export async function publishPackage(
   }
   let result = await run('npm', args, pkg.path);
 
-  // If OTP is required and we have a callback to get it, prompt and retry
-  if (result.code !== 0 && isOtpError(result.output) && context.onOtpRequired) {
-    const otpCode = await context.onOtpRequired();
-    if (otpCode) {
-      // Update context so subsequent packages use the same OTP
-      context.otp = otpCode;
-      const retryArgs = ['publish', '--registry', registry, '--access', 'public', '--otp', otpCode];
+  // If 2FA is required, trigger browser-based auth and retry
+  if (result.code !== 0 && isOtpError(result.output) && context.onAuthRequired) {
+    console.log('');
+    console.log('2FA verification required. Opening browser for authentication...');
+    const authSuccess = await context.onAuthRequired(registry);
+    if (authSuccess) {
+      console.log('');
+      console.log(`Retrying publish...`);
+      const retryArgs = ['publish', '--registry', registry, '--access', 'public'];
       result = await run('npm', retryArgs, pkg.path);
     }
   }
@@ -164,7 +166,7 @@ export async function publishPackage(
     if (isOtpError(result.output)) {
       return {
         success: false,
-        error: `2FA OTP required. Use --otp flag or run interactively.`,
+        error: `2FA required. Use --otp flag for TOTP, or run interactively for security key auth.`,
       };
     }
     return { success: false, error: `Failed to publish ${pkg.name}` };

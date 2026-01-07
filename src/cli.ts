@@ -14,7 +14,7 @@ import {
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
 import { closePrompt, confirm, multiSelect, prompt, select } from './prompts.js';
-import { checkNpmAuth, npmLogin, promptForOtp } from './auth.js';
+import { checkNpmAuth, npmLogin, reauthenticate } from './auth.js';
 import {
   commitVersionBump,
   createGitTag,
@@ -480,10 +480,10 @@ async function main() {
     console.log(cyan('Publishing packages...'));
     console.log('');
 
-    // Create publish context with OTP callback for interactive mode
+    // Create publish context with auth callback for interactive mode
     const publishContext: PublishContext = {
       otp: options.otp,
-      onOtpRequired: options.ci ? undefined : promptForOtp,
+      onAuthRequired: options.ci ? undefined : reauthenticate,
     };
 
     for (const pkg of packages) {
