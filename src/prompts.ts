@@ -1,7 +1,7 @@
 import * as readline from 'node:readline';
 import { bold, cyan, dim, green, muted, yellow } from './colors.js';
 
-const rl = readline.createInterface({
+let rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
@@ -16,6 +16,18 @@ export function prompt(question: string): Promise<string> {
 
 export function closePrompt(): void {
   rl.close();
+}
+
+/**
+ * Reset the readline interface after an interactive command took over stdin.
+ * This ensures prompts work correctly after npm publish --auth-type=web.
+ */
+export function resetPrompt(): void {
+  rl.close();
+  rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 }
 
 export async function confirm(

@@ -42,6 +42,23 @@ function run(
   });
 }
 
+function runInteractive(
+  command: string,
+  args: string[],
+  cwd: string,
+): Promise<{ code: number }> {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      cwd,
+      stdio: 'inherit',
+    });
+
+    proc.on('close', (code) => {
+      resolve({ code: code ?? 1 });
+    });
+  });
+}
+
 export async function runBuild(
   cwd: string,
   dryRun: boolean,
@@ -125,7 +142,8 @@ function isOtpError(output: string): boolean {
 
 export interface PublishContext {
   otp: string;
-  onAuthRequired?: (registry: string) => Promise<boolean>;
+  useBrowserAuth: boolean;
+  onInteractiveComplete?: () => void;
 }
 
 export async function publishPackage(
@@ -144,29 +162,28 @@ export async function publishPackage(
   console.log(`Publishing ${pkg.name}@${pkg.version}...`);
 
   const args = ['publish', '--registry', registry, '--access', 'public'];
+
   if (context.otp) {
     args.push('--otp', context.otp);
   }
-  let result = await run('npm', args, pkg.path);
 
-  // If 2FA is required, trigger browser-based auth and retry
-  if (result.code !== 0 && isOtpError(result.output) && context.onAuthRequired) {
-    console.log('');
-    console.log('2FA verification required. Opening browser for authentication...');
-    const authSuccess = await context.onAuthRequired(registry);
-    if (authSuccess) {
-      console.log('');
-      console.log(`Retrying publish...`);
-      const retryArgs = ['publish', '--registry', registry, '--access', 'public'];
-      result = await run('npm', retryArgs, pkg.path);
-    }
+  let result: { code: number; output: string };
+
+  if (context.useBrowserAuth) {
+    // Use interactive mode with web auth - npm will prompt for 2FA if needed
+    args.push('--auth-type', 'web');
+    const interactiveResult = await runInteractive('npm', args, pkg.path);
+    result = { code: interactiveResult.code, output: '' };
+    context.onInteractiveComplete?.();
+  } else {
+    result = await run('npm', args, pkg.path);
   }
 
   if (result.code !== 0) {
     if (isOtpError(result.output)) {
       return {
         success: false,
-        error: `2FA required. Use --otp flag for TOTP, or run interactively for security key auth.`,
+        error: '2FA required. Use --otp flag for TOTP, or run interactively.',
       };
     }
     return { success: false, error: `Failed to publish ${pkg.name}` };

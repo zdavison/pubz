@@ -59,11 +59,3 @@ export async function npmLogin(registry: string): Promise<LoginResult> {
   });
 }
 
-/**
- * Re-authenticate via npm login for 2FA verification (security keys, etc.)
- * Returns true if re-authentication succeeded
- */
-export async function reauthenticate(registry: string): Promise<boolean> {
-  const loginResult = await npmLogin(registry);
-  return loginResult.success;
-}

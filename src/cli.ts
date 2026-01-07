@@ -13,8 +13,8 @@ import {
   yellow,
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
-import { closePrompt, confirm, multiSelect, prompt, select } from './prompts.js';
-import { checkNpmAuth, npmLogin, reauthenticate } from './auth.js';
+import { closePrompt, confirm, multiSelect, resetPrompt, select } from './prompts.js';
+import { checkNpmAuth, npmLogin } from './auth.js';
 import {
   commitVersionBump,
   createGitTag,
@@ -480,10 +480,10 @@ async function main() {
     console.log(cyan('Publishing packages...'));
     console.log('');
 
-    // Create publish context with auth callback for interactive mode
     const publishContext: PublishContext = {
       otp: options.otp,
-      onAuthRequired: options.ci ? undefined : reauthenticate,
+      useBrowserAuth: !options.ci,
+      onInteractiveComplete: resetPrompt,
     };
 
     for (const pkg of packages) {
