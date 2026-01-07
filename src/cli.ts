@@ -14,6 +14,7 @@ import {
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
 import { closePrompt, confirm, multiSelect, prompt, select } from './prompts.js';
+import { checkNpmAuth, npmLogin } from './auth.js';
 import {
   commitVersionBump,
   createGitTag,
@@ -356,6 +357,50 @@ async function main() {
   console.log('');
   console.log(`Publishing to: ${cyan(registry)}`);
   console.log('');
+
+  // Auth verification (skip in dry run mode)
+  if (!options.dryRun) {
+    console.log(cyan('Verifying npm authentication...'));
+    const authResult = await checkNpmAuth(registry);
+
+    if (!authResult.authenticated) {
+      if (options.ci) {
+        console.error(red(bold('Error:')) + ' Not authenticated to npm.');
+        console.log('');
+        console.log(muted('In CI mode, you need to configure authentication:'));
+        console.log(muted('  - Set NPM_TOKEN environment variable'));
+        console.log(muted('  - Or configure .npmrc with auth token'));
+        console.log(muted('  - Or use OIDC Trusted Publishing'));
+        closePrompt();
+        process.exit(1);
+      }
+
+      console.log('');
+      console.log(yellow('Not logged in to npm.') + ' Starting login...');
+      console.log('');
+
+      const loginResult = await npmLogin(registry);
+      if (!loginResult.success) {
+        console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
+        closePrompt();
+        process.exit(1);
+      }
+
+      // Verify login succeeded
+      const verifyAuth = await checkNpmAuth(registry);
+      if (!verifyAuth.authenticated) {
+        console.error(red(bold('Error:')) + ' Login did not complete successfully.');
+        closePrompt();
+        process.exit(1);
+      }
+
+      console.log('');
+      console.log(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
+    } else {
+      console.log(green('Authenticated as') + ` ${cyan(authResult.username ?? 'unknown')}`);
+    }
+    console.log('');
+  }
 
   // Step 3: Build
   if (!options.skipBuild) {
