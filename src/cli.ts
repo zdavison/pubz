@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   bold,
   cyan,
@@ -33,11 +36,21 @@ const REGISTRIES = {
   github: 'https://npm.pkg.github.com',
 } as const;
 
+function getVersion(): string {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const pkgPath = join(__dirname, '..', 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  return pkg.version;
+}
+
 function printUsage() {
   console.log(`
 pubz - Interactive npm package publisher
 
-Usage: pubz [options]
+Usage: pubz [command] [options]
+
+Commands:
+  version                Show version number
 
 Options:
   --dry-run              Show what would be published without actually publishing
@@ -107,6 +120,12 @@ function parseArgs(args: string[]): PublishOptions & { help: boolean } {
 }
 
 async function main() {
+  // Handle 'version' command
+  if (process.argv[2] === 'version') {
+    console.log(getVersion());
+    process.exit(0);
+  }
+
   const options = parseArgs(process.argv.slice(2));
 
   if (options.help) {
