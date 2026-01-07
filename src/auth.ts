@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { cyan } from './colors.js';
+import { prompt } from './prompts.js';
 
 export interface AuthResult {
   authenticated: boolean;
@@ -59,3 +61,11 @@ export async function npmLogin(registry: string): Promise<LoginResult> {
   });
 }
 
+/**
+ * Prompt user for OTP code from their authenticator app
+ */
+export async function promptForOtp(): Promise<string> {
+  console.log('');
+  const code = await prompt(`${cyan('?')} Enter OTP code from your authenticator: `);
+  return code.trim();
+}

@@ -119,10 +119,19 @@ export async function verifyBuild(
   return { success: true };
 }
 
+function isOtpError(output: string): boolean {
+  return output.includes('EOTP') || output.includes('one-time password');
+}
+
+export interface PublishContext {
+  otp: string;
+  onOtpRequired?: () => Promise<string>;
+}
+
 export async function publishPackage(
   pkg: DiscoveredPackage,
   registry: string,
-  otp: string,
+  context: PublishContext,
   dryRun: boolean,
 ): Promise<PublishResult> {
   if (dryRun) {
@@ -135,12 +144,29 @@ export async function publishPackage(
   console.log(`Publishing ${pkg.name}@${pkg.version}...`);
 
   const args = ['publish', '--registry', registry, '--access', 'public'];
-  if (otp) {
-    args.push('--otp', otp);
+  if (context.otp) {
+    args.push('--otp', context.otp);
   }
-  const result = await run('npm', args, pkg.path);
+  let result = await run('npm', args, pkg.path);
+
+  // If OTP is required and we have a callback to get it, prompt and retry
+  if (result.code !== 0 && isOtpError(result.output) && context.onOtpRequired) {
+    const otpCode = await context.onOtpRequired();
+    if (otpCode) {
+      // Update context so subsequent packages use the same OTP
+      context.otp = otpCode;
+      const retryArgs = ['publish', '--registry', registry, '--access', 'public', '--otp', otpCode];
+      result = await run('npm', retryArgs, pkg.path);
+    }
+  }
 
   if (result.code !== 0) {
+    if (isOtpError(result.output)) {
+      return {
+        success: false,
+        error: `2FA OTP required. Use --otp flag or run interactively.`,
+      };
+    }
     return { success: false, error: `Failed to publish ${pkg.name}` };
   }
 

@@ -14,7 +14,7 @@ import {
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
 import { closePrompt, confirm, multiSelect, prompt, select } from './prompts.js';
-import { checkNpmAuth, npmLogin } from './auth.js';
+import { checkNpmAuth, npmLogin, promptForOtp } from './auth.js';
 import {
   commitVersionBump,
   createGitTag,
@@ -23,6 +23,7 @@ import {
   pushGitTag,
   runBuild,
   verifyBuild,
+  type PublishContext,
 } from './publish.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
@@ -479,8 +480,14 @@ async function main() {
     console.log(cyan('Publishing packages...'));
     console.log('');
 
+    // Create publish context with OTP callback for interactive mode
+    const publishContext: PublishContext = {
+      otp: options.otp,
+      onOtpRequired: options.ci ? undefined : promptForOtp,
+    };
+
     for (const pkg of packages) {
-      const result = await publishPackage(pkg, registry, options.otp, options.dryRun);
+      const result = await publishPackage(pkg, registry, publishContext, options.dryRun);
       if (!result.success) {
         console.error(red(bold('Failed to publish')) + ` ${cyan(pkg.name)}: ${result.error}`);
         console.log('');
