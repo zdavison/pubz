@@ -359,23 +359,15 @@ async function main() {
   console.log(`Publishing to: ${cyan(registry)}`);
   console.log('');
 
-  // Auth verification (skip in dry run mode)
-  if (!options.dryRun) {
+  // Auth verification (skip in dry run mode and CI mode)
+  // In CI mode, skip auth check because:
+  // - OIDC Trusted Publishing authenticates at publish time, not beforehand
+  // - If auth is misconfigured, the publish command will fail with a clear error
+  if (!options.dryRun && !options.ci) {
     console.log(cyan('Verifying npm authentication...'));
     const authResult = await checkNpmAuth(registry);
 
     if (!authResult.authenticated) {
-      if (options.ci) {
-        console.error(red(bold('Error:')) + ' Not authenticated to npm.');
-        console.log('');
-        console.log(muted('In CI mode, you need to configure authentication:'));
-        console.log(muted('  - Set NPM_TOKEN environment variable'));
-        console.log(muted('  - Or configure .npmrc with auth token'));
-        console.log(muted('  - Or use OIDC Trusted Publishing'));
-        closePrompt();
-        process.exit(1);
-      }
-
       console.log('');
       console.log(yellow('Not logged in to npm.') + ' Starting login...');
       console.log('');
