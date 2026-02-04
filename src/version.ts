@@ -73,6 +73,12 @@ export async function updateLocalDependencyVersions(
       for (const depName of Object.keys(deps)) {
         if (packageNames.has(depName)) {
           const oldVersion = deps[depName];
+
+          // Skip workspace protocol - package manager handles this at publish time
+          if (oldVersion.startsWith('workspace:')) {
+            continue;
+          }
+
           const newVersionSpec = oldVersion.startsWith('^')
             ? `^${newVersion}`
             : oldVersion.startsWith('~')
