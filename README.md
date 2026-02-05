@@ -2,7 +2,7 @@
 
 <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/11ffa33c-e895-4a7d-b2c3-dfadde8dd124" />
 
-
+---
 
 ```bash
 bunx pubz
