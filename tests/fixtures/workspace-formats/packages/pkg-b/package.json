@@ -1,0 +1,14 @@
+{
+  "name": "@test/pkg-b",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "dependencies": {
+    "@test/pkg-a": "workspace:^"
+  },
+  "devDependencies": {
+    "@test/pkg-a": "workspace:~"
+  },
+  "peerDependencies": {
+    "@test/pkg-a": "workspace:*"
+  }
+}

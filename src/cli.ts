@@ -29,6 +29,8 @@ import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
   previewBump,
+  restoreWorkspaceProtocol,
+  transformWorkspaceProtocolForPublish,
   updateLocalDependencyVersions,
   updatePackageVersion,
 } from './version.js';
@@ -443,51 +445,83 @@ async function main() {
     console.log(
       yellow('[DRY RUN]') + ` Would publish the following packages to ${cyan(registry)}:`,
     );
-    console.log('');
-    for (const pkg of packages) {
-      console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
-    }
-    console.log('');
-    console.log(muted('Run without --dry-run to actually publish.'));
   } else {
     console.log('About to publish the following packages:');
-    console.log('');
-    for (const pkg of packages) {
-      console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+  }
+  console.log('');
+  for (const pkg of packages) {
+    console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+  }
+  console.log('');
+  console.log(`Registry: ${cyan(registry)}`);
+  console.log('');
+
+  if (!options.dryRun && !skipConfirms) {
+    const shouldContinue = await confirm('Continue?');
+    if (!shouldContinue) {
+      console.log(yellow('Publish cancelled.'));
+      closePrompt();
+      process.exit(0);
     }
     console.log('');
-    console.log(`Registry: ${cyan(registry)}`);
+  }
+
+  console.log(cyan('Preparing packages for publish...'));
+  console.log('');
+
+  // Transform workspace: references to actual versions for publishing
+  const workspaceTransforms = await transformWorkspaceProtocolForPublish(
+    packages,
+    newVersion,
+    options.dryRun,
+  );
+
+  if (workspaceTransforms.length > 0 || options.dryRun) {
     console.log('');
+  }
 
-    if (!skipConfirms) {
-      const shouldContinue = await confirm('Continue?');
-      if (!shouldContinue) {
-        console.log(yellow('Publish cancelled.'));
-        closePrompt();
-        process.exit(0);
-      }
-    }
+  console.log(cyan('Publishing packages...'));
+  console.log('');
 
-    console.log('');
-    console.log(cyan('Publishing packages...'));
-    console.log('');
+  const publishContext: PublishContext = {
+    otp: options.otp,
+    useBrowserAuth: !options.ci,
+    onInteractiveComplete: resetPrompt,
+  };
 
-    const publishContext: PublishContext = {
-      otp: options.otp,
-      useBrowserAuth: !options.ci,
-      onInteractiveComplete: resetPrompt,
-    };
+  let publishFailed = false;
+  let failedPackageName = '';
+  let failedError = '';
 
+  try {
     for (const pkg of packages) {
       const result = await publishPackage(pkg, registry, publishContext, options.dryRun);
       if (!result.success) {
-        console.error(red(bold('Failed to publish')) + ` ${cyan(pkg.name)}: ${result.error}`);
-        console.log('');
-        console.log(red('Stopping publish process.'));
-        closePrompt();
-        process.exit(1);
+        publishFailed = true;
+        failedPackageName = pkg.name;
+        failedError = result.error ?? 'Unknown error';
+        break;
       }
     }
+  } finally {
+    // Restore workspace: references
+    if (workspaceTransforms.length > 0) {
+      console.log('');
+      await restoreWorkspaceProtocol(workspaceTransforms);
+    }
+  }
+
+  if (publishFailed) {
+    console.error(red(bold('Failed to publish')) + ` ${cyan(failedPackageName)}: ${failedError}`);
+    console.log('');
+    console.log(red('Stopping publish process.'));
+    closePrompt();
+    process.exit(1);
+  }
+
+  if (options.dryRun) {
+    console.log('');
+    console.log(muted('Run without --dry-run to actually publish.'));
   }
 
   console.log('');

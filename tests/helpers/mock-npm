@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper script to run mock-npm.ts with bun
+exec bun "$(dirname "$0")/mock-npm.ts" "$@"

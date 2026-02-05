@@ -146,6 +146,9 @@ export interface PublishContext {
   onInteractiveComplete?: () => void;
 }
 
+// Allow overriding npm command for testing
+const NPM_COMMAND = process.env.PUBZ_NPM_COMMAND ?? 'npm';
+
 export async function publishPackage(
   pkg: DiscoveredPackage,
   registry: string,
@@ -172,11 +175,11 @@ export async function publishPackage(
   if (context.useBrowserAuth) {
     // Use interactive mode with web auth - npm will prompt for 2FA if needed
     args.push('--auth-type', 'web');
-    const interactiveResult = await runInteractive('npm', args, pkg.path);
+    const interactiveResult = await runInteractive(NPM_COMMAND, args, pkg.path);
     result = { code: interactiveResult.code, output: '' };
     context.onInteractiveComplete?.();
   } else {
-    result = await run('npm', args, pkg.path);
+    result = await run(NPM_COMMAND, args, pkg.path);
   }
 
   if (result.code !== 0) {
