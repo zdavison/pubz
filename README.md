@@ -14,8 +14,9 @@ bunx pubz
 6. Commits version changes
 7. Prompts you for where you want to publish (e.g. `npm` or private registry)
 8. Builds packages
-9. Publishes to npm
-10. Prompts you to create a `git tag` and push it
+9. Transforms `workspace:` definitions to hard version numbers (so `npm` can be used for publishing with OIDC support).
+10. Publishes to npm
+11. Prompts you to create a `git tag` and push it
 
 ## Options
 
