@@ -13,8 +13,9 @@ import {
   yellow,
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
-import { closePrompt, confirm, multiSelect, resetPrompt, select } from './prompts.js';
+import { closePrompt, confirm, multiSelect, pausePrompt, resetPrompt, select } from './prompts.js';
 import { checkNpmAuth, npmLogin } from './auth.js';
+import { debug, setVerbose } from './log.js';
 import {
   commitVersionBump,
   createGitTag,
@@ -65,6 +66,7 @@ Options:
   --yes, -y              Skip yes/no confirmation prompts (still asks for choices)
   --ci                   CI mode: skip all prompts, auto-accept everything
   --version <value>      Version bump type (patch|minor|major) or explicit version (required with --ci)
+  --verbose              Show debug logging
   -h, --help             Show this help message
 
 Examples:
@@ -85,6 +87,7 @@ function parseArgs(args: string[]): PublishOptions & { help: boolean } {
     skipConfirms: false,
     ci: false,
     version: '',
+    verbose: false,
     help: false,
   };
 
@@ -114,6 +117,9 @@ function parseArgs(args: string[]): PublishOptions & { help: boolean } {
       case '--version':
         options.version = args[++i] || '';
         break;
+      case '--verbose':
+        options.verbose = true;
+        break;
       case '-h':
       case '--help':
         options.help = true;
@@ -132,6 +138,7 @@ async function main() {
   }
 
   const options = parseArgs(process.argv.slice(2));
+  setVerbose(options.verbose);
 
   if (options.help) {
     printUsage();
@@ -375,7 +382,9 @@ async function main() {
       console.log(yellow('Not logged in to npm.') + ' Starting login...');
       console.log('');
 
+      pausePrompt();
       const loginResult = await npmLogin(registry);
+      resetPrompt();
       if (!loginResult.success) {
         console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
         closePrompt();

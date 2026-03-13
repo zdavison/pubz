@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { DiscoveredPackage, PackageJson } from './types.js';
 
@@ -175,6 +176,9 @@ export async function publishPackage(
   if (context.useBrowserAuth) {
     // Use interactive mode with web auth - npm will prompt for 2FA if needed
     args.push('--auth-type', 'web');
+    // Use user-level .npmrc to avoid project .npmrc files that may contain
+    // CI-only auth tokens (e.g. ${NPM_TOKEN}) which override user auth
+    args.push('--userconfig', join(homedir(), '.npmrc'));
     const interactiveResult = await runInteractive(NPM_COMMAND, args, pkg.path);
     result = { code: interactiveResult.code, output: '' };
     context.onInteractiveComplete?.();
