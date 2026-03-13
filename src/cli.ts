@@ -25,6 +25,7 @@ import {
   verifyBuild,
   type PublishContext,
 } from './publish.js';
+import { generateChangelog, createGitHubRelease } from './changelog.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
@@ -531,17 +532,39 @@ async function main() {
   console.log(`Published version: ${green(bold(newVersion))}`);
   console.log('');
 
-  // Step 5: Git tagging
+  // Step 5: Git tagging & release
+  const changelog = await generateChangelog(cwd);
+
+  if (changelog.terminal) {
+    console.log(bold('Changes since ') + cyan(changelog.previousTag ?? 'initial') + bold(':'));
+    console.log(changelog.terminal);
+    console.log('');
+  }
+
   if (!options.dryRun) {
     if (options.ci) {
       // In CI mode, automatically create and push git tag
-      console.log('');
       console.log(cyan('Creating git tag...'));
       const tagResult = await createGitTag(newVersion, cwd, options.dryRun);
 
       if (tagResult.success) {
         console.log(cyan('Pushing tag to origin...'));
         await pushGitTag(newVersion, cwd, options.dryRun);
+
+        if (changelog.markdown) {
+          console.log(cyan('Creating GitHub release...'));
+          const releaseResult = await createGitHubRelease(
+            newVersion,
+            changelog.markdown,
+            cwd,
+            options.dryRun,
+          );
+          if (releaseResult.success && releaseResult.url) {
+            console.log(`  Release created: ${cyan(releaseResult.url)}`);
+          } else if (!releaseResult.success) {
+            console.error(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
+          }
+        }
       } else {
         console.error(red(tagResult.error ?? 'Failed to create git tag'));
       }
@@ -557,6 +580,23 @@ async function main() {
           const shouldPush = await confirm('Push tag to origin?');
           if (shouldPush) {
             await pushGitTag(newVersion, cwd, options.dryRun);
+
+            if (changelog.markdown) {
+              const shouldRelease = await confirm('Create a GitHub release?');
+              if (shouldRelease) {
+                const releaseResult = await createGitHubRelease(
+                  newVersion,
+                  changelog.markdown,
+                  cwd,
+                  options.dryRun,
+                );
+                if (releaseResult.success && releaseResult.url) {
+                  console.log(`  Release created: ${cyan(releaseResult.url)}`);
+                } else if (!releaseResult.success) {
+                  console.error(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
+                }
+              }
+            }
           } else {
             console.log(
               `Tag created locally. Push manually with: ${dim(`git push origin v${newVersion}`)}`,
