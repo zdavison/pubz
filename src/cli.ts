@@ -569,20 +569,20 @@ async function main() {
         console.error(red(tagResult.error ?? 'Failed to create git tag'));
       }
       console.log('');
-    } else if (!skipConfirms) {
-      const shouldTag = await confirm(`Create a git tag for ${cyan(`v${newVersion}`)}?`);
+    } else {
+      const shouldTag = skipConfirms || await confirm(`Create a git tag for ${cyan(`v${newVersion}`)}?`);
 
       if (shouldTag) {
         console.log('');
         const tagResult = await createGitTag(newVersion, cwd, options.dryRun);
 
         if (tagResult.success) {
-          const shouldPush = await confirm('Push tag to origin?');
+          const shouldPush = skipConfirms || await confirm('Push tag to origin?');
           if (shouldPush) {
             await pushGitTag(newVersion, cwd, options.dryRun);
 
             if (changelog.markdown) {
-              const shouldRelease = await confirm('Create a GitHub release?');
+              const shouldRelease = skipConfirms || await confirm('Create a GitHub release?');
               if (shouldRelease) {
                 const releaseResult = await createGitHubRelease(
                   newVersion,
