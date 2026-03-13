@@ -26,6 +26,7 @@ export interface PublishOptions {
   skipConfirms: boolean;
   ci: boolean;
   version: string;
+  verbose: boolean;
 }
 
 export type VersionBumpType = 'major' | 'minor' | 'patch' | 'none';

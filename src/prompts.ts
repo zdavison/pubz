@@ -19,6 +19,14 @@ export function closePrompt(): void {
 }
 
 /**
+ * Pause the readline interface before spawning an interactive child process.
+ * This releases stdin so the child process can receive input (e.g. Enter to open browser).
+ */
+export function pausePrompt(): void {
+  rl.close();
+}
+
+/**
  * Reset the readline interface after an interactive command took over stdin.
  * This ensures prompts work correctly after npm publish --auth-type=web.
  */

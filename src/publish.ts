@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { DiscoveredPackage, PackageJson } from './types.js';
 
@@ -143,6 +144,7 @@ function isOtpError(output: string): boolean {
 export interface PublishContext {
   otp: string;
   useBrowserAuth: boolean;
+  onInteractiveStart?: () => void;
   onInteractiveComplete?: () => void;
 }
 
@@ -175,7 +177,11 @@ export async function publishPackage(
   if (context.useBrowserAuth) {
     // Use interactive mode with web auth - npm will prompt for 2FA if needed
     args.push('--auth-type', 'web');
-    const interactiveResult = await runInteractive(NPM_COMMAND, args, pkg.path);
+    // Pass package path as argument and run from home dir to avoid project
+    // .npmrc files that may contain CI-only auth tokens (e.g. ${NPM_TOKEN})
+    args.push(pkg.path);
+    context.onInteractiveStart?.();
+    const interactiveResult = await runInteractive(NPM_COMMAND, args, homedir());
     result = { code: interactiveResult.code, output: '' };
     context.onInteractiveComplete?.();
   } else {
