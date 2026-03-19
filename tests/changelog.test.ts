@@ -29,6 +29,7 @@ const sampleCommits = [
 	{ sha: 'abc1234', message: 'Fix workspace dependency resolution' },
 	{ sha: 'def5678', message: 'Add support for scoped packages' },
 	{ sha: '9990aaa', message: 'chore: release v0.2.12' },
+	{ sha: '5fe3f70', message: "Merge branch 'main' of github.com:mm-zacharydavison/pubz" },
 ];
 
 describe('formatChangelogTerminal', () => {
@@ -44,6 +45,11 @@ describe('formatChangelogTerminal', () => {
 	test('filters out release commits', () => {
 		const output = formatChangelogTerminal(sampleCommits);
 		expect(output).not.toContain('chore: release');
+	});
+
+	test('filters out merge commits', () => {
+		const output = formatChangelogTerminal(sampleCommits);
+		expect(output).not.toContain('Merge branch');
 	});
 
 	test('returns empty string when all commits are release commits', () => {
@@ -66,6 +72,11 @@ describe('formatChangelogMarkdown', () => {
 	test('filters out release commits', () => {
 		const output = formatChangelogMarkdown(sampleCommits, repoUrl);
 		expect(output).not.toContain('chore: release');
+	});
+
+	test('filters out merge commits', () => {
+		const output = formatChangelogMarkdown(sampleCommits, repoUrl);
+		expect(output).not.toContain('Merge branch');
 	});
 
 	test('formats without links when repoUrl is null', () => {

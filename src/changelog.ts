@@ -108,11 +108,15 @@ function isReleaseCommit(message: string): boolean {
 	return /^chore: release v/.test(message);
 }
 
+function isMergeCommit(message: string): boolean {
+	return /^Merge /.test(message);
+}
+
 /**
  * Format changelog for terminal output with colored short SHAs.
  */
 export function formatChangelogTerminal(commits: ChangelogCommit[]): string {
-	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message) && !isMergeCommit(c.message));
 	if (filtered.length === 0) return '';
 
 	return filtered
@@ -127,7 +131,7 @@ export function formatChangelogMarkdown(
 	commits: ChangelogCommit[],
 	repoUrl: string | null,
 ): string {
-	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message) && !isMergeCommit(c.message));
 	if (filtered.length === 0) return '';
 
 	return filtered
