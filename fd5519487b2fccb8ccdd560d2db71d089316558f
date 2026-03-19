@@ -1,0 +1,27 @@
+src/cli.ts
+  13ebcd9fe95a4b26 29-30
+src/changelog.ts
+  13ebcd9fe95a4b26 3,209
+src/claude.ts
+  13ebcd9fe95a4b26 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "fd5519487b2fccb8ccdd560d2db71d089316558f",
+  "prompts": {
+    "13ebcd9fe95a4b26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a37e8654-46f8-403e-bc76-fbb376c84b12",
+        "model": "<synthetic>"
+      },
+      "human_author": "deer-agent <deer@noreply>",
+      "messages": [],
+      "total_additions": 158,
+      "total_deletions": 65,
+      "accepted_lines": 135,
+      "overriden_lines": 0
+    }
+  }
+}
