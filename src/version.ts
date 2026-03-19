@@ -113,6 +113,14 @@ export async function restoreWorkspaceProtocol(
   }
 }
 
+/**
+ * Validates that a string is a valid semver version (major.minor.patch with optional pre-release suffix).
+ * @example "1.2.3", "1.2.3-beta", "1.2.3-rc.1"
+ */
+export function isValidVersion(version: string): boolean {
+  return /^\d+\.\d+\.\d+(-.+)?$/.test(version);
+}
+
 export function bumpVersion(version: string, type: VersionBumpType): string {
   if (type === 'none') return version;
 

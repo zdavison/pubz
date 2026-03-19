@@ -13,7 +13,7 @@ import {
   yellow,
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
-import { closePrompt, confirm, multiSelect, pausePrompt, resetPrompt, select } from './prompts.js';
+import { closePrompt, confirm, multiSelect, pausePrompt, prompt, resetPrompt, select } from './prompts.js';
 import { checkNpmAuth, npmLogin } from './auth.js';
 import { debug, setVerbose } from './log.js';
 import {
@@ -30,6 +30,7 @@ import { generateChangelog, createGitHubRelease } from './changelog.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
+  isValidVersion,
   previewBump,
   restoreWorkspaceProtocol,
   transformWorkspaceProtocolForPublish,
@@ -264,7 +265,13 @@ async function main() {
       newVersion = bumpVersion(currentVersion, options.version as VersionBumpType);
       console.log(`Bumping version (${options.version}): ${yellow(currentVersion)} → ${green(newVersion)}`);
     } else {
-      newVersion = options.version;
+      const cleaned = options.version.startsWith('v') ? options.version.slice(1) : options.version;
+      if (!isValidVersion(cleaned)) {
+        console.error(red(bold('Error:')) + ` Invalid version "${options.version}". Expected format: major.minor.patch (e.g. 1.2.3, 1.2.3-beta)`);
+        closePrompt();
+        process.exit(1);
+      }
+      newVersion = cleaned;
       console.log(`Using explicit version: ${green(newVersion)}`);
     }
     console.log('');
@@ -299,7 +306,7 @@ async function main() {
     const shouldBump = skipConfirms || (await confirm('Bump version before publishing?'));
 
     if (shouldBump) {
-      const bumpType = await select<VersionBumpType>(
+      const bumpChoice = await select<VersionBumpType | 'custom'>(
         'Select version bump type:',
         [
           {
@@ -314,10 +321,29 @@ async function main() {
             label: `major (${previewBump(currentVersion, 'major')})`,
             value: 'major',
           },
+          {
+            label: 'custom version',
+            value: 'custom',
+          },
         ],
       );
 
-      newVersion = bumpVersion(currentVersion, bumpType);
+      if (bumpChoice === 'custom') {
+        let customVersion = '';
+        while (!customVersion) {
+          const input = await prompt(`  Enter version: `);
+          // Strip leading 'v' prefix if provided
+          const cleaned = input.startsWith('v') ? input.slice(1) : input;
+          if (isValidVersion(cleaned)) {
+            customVersion = cleaned;
+          } else {
+            console.log(yellow('  Invalid version. Expected format: major.minor.patch (e.g. 1.2.3, 1.2.3-beta)'));
+          }
+        }
+        newVersion = customVersion;
+      } else {
+        newVersion = bumpVersion(currentVersion, bumpChoice);
+      }
 
       console.log('');
       console.log(`Updating version to ${green(newVersion)} in all packages...`);
