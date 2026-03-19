@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { dim } from './colors.js';
-import { debug } from './log.js';
+import { runClaudePrompt } from './claude.js';
 
 export interface ChangelogCommit {
 	sha: string;
@@ -185,14 +185,6 @@ export async function generateChangelog(
 }
 
 /**
- * Check if the `claude` CLI is available on PATH.
- */
-export async function isClaudeAvailable(): Promise<boolean> {
-	const result = await runSilent('which', ['claude'], process.cwd());
-	return result.code === 0;
-}
-
-/**
  * Generate AI-powered release notes using the `claude` CLI.
  * Passes all commit messages to Claude and asks for a human-readable summary.
  */
@@ -214,38 +206,7 @@ ${commitList}
 
 Write concise, user-friendly release notes in markdown. Group related changes under headings if appropriate (e.g. Features, Bug Fixes, Improvements). Focus on what changed and why it matters to users — not implementation details. Do not include a title or version header. Output only the markdown body.`;
 
-	return new Promise((resolve) => {
-		const proc = spawn('claude', ['-p', prompt], {
-			stdio: ['ignore', 'pipe', 'pipe'],
-		});
-
-		let output = '';
-		let stderr = '';
-		proc.stdout?.on('data', (data: Buffer) => {
-			output += data.toString();
-		});
-		proc.stderr?.on('data', (data: Buffer) => {
-			stderr += data.toString();
-		});
-		proc.on('close', (code: number | null) => {
-			if (code === 0 && output.trim()) {
-				resolve(output.trim());
-			} else {
-				debug(`claude CLI exited with code ${code}`);
-				if (stderr.trim()) {
-					debug(`claude stderr: ${stderr.trim()}`);
-				}
-				if (!output.trim() && code === 0) {
-					debug('claude CLI returned empty output');
-				}
-				resolve(null);
-			}
-		});
-		proc.on('error', (err) => {
-			debug(`Failed to spawn claude CLI: ${err.message}`);
-			resolve(null);
-		});
-	});
+	return runClaudePrompt(prompt);
 }
 
 /**

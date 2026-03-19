@@ -26,7 +26,8 @@ import {
   verifyBuild,
   type PublishContext,
 } from './publish.js';
-import { generateChangelog, createGitHubRelease, generateAIReleaseNotes, isClaudeAvailable } from './changelog.js';
+import { generateChangelog, createGitHubRelease, generateAIReleaseNotes } from './changelog.js';
+import { isClaudeAvailable } from './claude.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
