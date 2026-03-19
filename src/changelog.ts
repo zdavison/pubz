@@ -180,6 +180,56 @@ export async function generateChangelog(
 }
 
 /**
+ * Check if the `claude` CLI is available on PATH.
+ */
+export async function isClaudeAvailable(): Promise<boolean> {
+	const result = await runSilent('which', ['claude'], process.cwd());
+	return result.code === 0;
+}
+
+/**
+ * Generate AI-powered release notes using the `claude` CLI.
+ * Passes all commit messages to Claude and asks for a human-readable summary.
+ */
+export async function generateAIReleaseNotes(
+	commits: ChangelogCommit[],
+	version: string,
+): Promise<string | null> {
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	if (filtered.length === 0) return null;
+
+	const commitList = filtered
+		.map((c) => `- ${c.sha} ${c.message}`)
+		.join('\n');
+
+	const prompt = `You are writing release notes for version ${version} of a software package.
+
+Here are the commits included in this release:
+${commitList}
+
+Write concise, user-friendly release notes in markdown. Group related changes under headings if appropriate (e.g. Features, Bug Fixes, Improvements). Focus on what changed and why it matters to users — not implementation details. Do not include a title or version header. Output only the markdown body.`;
+
+	return new Promise((resolve) => {
+		const proc = spawn('claude', ['-p', prompt], {
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
+
+		let output = '';
+		proc.stdout?.on('data', (data: Buffer) => {
+			output += data.toString();
+		});
+		proc.on('close', (code: number | null) => {
+			if (code === 0 && output.trim()) {
+				resolve(output.trim());
+			} else {
+				resolve(null);
+			}
+		});
+		proc.on('error', () => resolve(null));
+	});
+}
+
+/**
  * Create a GitHub release using the gh CLI.
  */
 export async function createGitHubRelease(

@@ -26,7 +26,7 @@ import {
   verifyBuild,
   type PublishContext,
 } from './publish.js';
-import { generateChangelog, createGitHubRelease } from './changelog.js';
+import { generateChangelog, createGitHubRelease, generateAIReleaseNotes, isClaudeAvailable } from './changelog.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
@@ -577,6 +577,28 @@ async function main() {
     console.log('');
   }
 
+  // Optionally generate AI release notes if claude CLI is available
+  let releaseNotes = changelog.markdown;
+  if (!options.ci && changelog.commits.length > 0) {
+    const claudeAvailable = await isClaudeAvailable();
+    if (claudeAvailable) {
+      const useAI = await confirm('Generate release notes with AI (claude)?');
+      if (useAI) {
+        console.log(cyan('Generating AI release notes...'));
+        const aiNotes = await generateAIReleaseNotes(changelog.commits, newVersion);
+        if (aiNotes) {
+          releaseNotes = aiNotes;
+          console.log('');
+          console.log(bold('AI-generated release notes:'));
+          console.log(aiNotes);
+          console.log('');
+        } else {
+          console.log(yellow('AI generation failed, falling back to commit list.'));
+        }
+      }
+    }
+  }
+
   if (!options.dryRun) {
     if (options.ci) {
       // In CI mode, automatically create and push git tag
@@ -587,11 +609,11 @@ async function main() {
         console.log(cyan('Pushing tag to origin...'));
         await pushGitTag(newVersion, cwd, options.dryRun);
 
-        if (changelog.markdown) {
+        if (releaseNotes) {
           console.log(cyan('Creating GitHub release...'));
           const releaseResult = await createGitHubRelease(
             newVersion,
-            changelog.markdown,
+            releaseNotes,
             cwd,
             options.dryRun,
           );
@@ -617,12 +639,12 @@ async function main() {
           if (shouldPush) {
             await pushGitTag(newVersion, cwd, options.dryRun);
 
-            if (changelog.markdown) {
+            if (releaseNotes) {
               const shouldRelease = skipConfirms || await confirm('Create a GitHub release?');
               if (shouldRelease) {
                 const releaseResult = await createGitHubRelease(
                   newVersion,
-                  changelog.markdown,
+                  releaseNotes,
                   cwd,
                   options.dryRun,
                 );
