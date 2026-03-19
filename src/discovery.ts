@@ -45,6 +45,10 @@ export async function discoverPackages(
 
   let packageDirs: string[] = [];
 
+  // Check if the root package itself is publishable (not private, has a name)
+  const rootIsPublishable =
+    !rootPackageJson.private && rootPackageJson.name && rootPackageJson.version;
+
   if (workspacePatterns.length > 0) {
     // Use workspace patterns from package.json
     for (const pattern of workspacePatterns) {
@@ -73,6 +77,14 @@ export async function discoverPackages(
   // Read all package.json files
   const packages: DiscoveredPackage[] = [];
   const packageNames = new Set<string>();
+
+  // Include the root package if it's publishable
+  if (rootIsPublishable) {
+    packageNames.add(rootPackageJson.name);
+    packages.push(
+      await packageFromPath(cwd, rootPackageJsonPath, rootPackageJson, []),
+    );
+  }
 
   for (const dir of packageDirs) {
     const pkgPath = resolve(cwd, dir);
