@@ -141,6 +141,13 @@ export function formatChangelogMarkdown(
 }
 
 /**
+ * Fetch all tags from the remote to ensure we have the latest.
+ */
+export async function fetchTags(cwd: string): Promise<void> {
+	await runSilent('git', ['fetch', '--tags'], cwd);
+}
+
+/**
  * Generate full changelog: fetches previous tag, commits, and formats.
  * Returns both terminal and markdown versions.
  */
@@ -153,6 +160,9 @@ export async function generateChangelog(
 	previousTag: string | null;
 	repoUrl: string | null;
 }> {
+	// Fetch latest tags from remote in case a version was published elsewhere
+	await fetchTags(cwd);
+
 	const [previousTag, repoUrl] = await Promise.all([
 		getPreviousTag(cwd),
 		getRepoUrl(cwd),
