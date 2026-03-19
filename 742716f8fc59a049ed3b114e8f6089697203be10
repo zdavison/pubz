@@ -1,0 +1,25 @@
+src/cli.ts
+  9b46c107c527d575 596
+src/changelog.ts
+  9b46c107c527d575 3,223,227-229,234-240,244-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "742716f8fc59a049ed3b114e8f6089697203be10",
+  "prompts": {
+    "9b46c107c527d575": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49e5ca5e-9ce0-48c3-8fa3-8f7c4bf2ca9b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "deer-agent <deer@noreply>",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 2,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  }
+}
