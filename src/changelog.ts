@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { dim } from './colors.js';
+import { debug } from './log.js';
 
 export interface ChangelogCommit {
 	sha: string;
@@ -219,17 +220,31 @@ Write concise, user-friendly release notes in markdown. Group related changes un
 		});
 
 		let output = '';
+		let stderr = '';
 		proc.stdout?.on('data', (data: Buffer) => {
 			output += data.toString();
+		});
+		proc.stderr?.on('data', (data: Buffer) => {
+			stderr += data.toString();
 		});
 		proc.on('close', (code: number | null) => {
 			if (code === 0 && output.trim()) {
 				resolve(output.trim());
 			} else {
+				debug(`claude CLI exited with code ${code}`);
+				if (stderr.trim()) {
+					debug(`claude stderr: ${stderr.trim()}`);
+				}
+				if (!output.trim() && code === 0) {
+					debug('claude CLI returned empty output');
+				}
 				resolve(null);
 			}
 		});
-		proc.on('error', () => resolve(null));
+		proc.on('error', (err) => {
+			debug(`Failed to spawn claude CLI: ${err.message}`);
+			resolve(null);
+		});
 	});
 }
 

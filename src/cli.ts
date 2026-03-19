@@ -593,7 +593,7 @@ async function main() {
           console.log(aiNotes);
           console.log('');
         } else {
-          console.log(yellow('AI generation failed, falling back to commit list.'));
+          console.log(yellow('AI generation failed, falling back to commit list.') + dim(' (run with --verbose for details)'));
         }
       }
     }
