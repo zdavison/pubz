@@ -287,6 +287,12 @@ export async function pushGitTag(
     return { success: true };
   }
 
+  // Push the current branch first so the version bump commit is not orphaned
+  const branchResult = await run('git', ['push'], cwd);
+  if (branchResult.code !== 0) {
+    return { success: false, error: 'Failed to push bump commit to origin' };
+  }
+
   const result = await run('git', ['push', 'origin', tagName], cwd);
   if (result.code !== 0) {
     return { success: false, error: `Failed to push tag ${tagName}` };
