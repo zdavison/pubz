@@ -530,7 +530,7 @@ async function main() {
   }
 
   let releaseNotes = changelog.markdown;
-  if (!options.ci && changelog.commits.length > 0) {
+  if (changelog.commits.length > 0) {
     const claudeAvailable = await isClaudeAvailable();
     if (claudeAvailable) {
       const useAI = skipConfirms || await confirm('Generate release notes with AI (claude)?');

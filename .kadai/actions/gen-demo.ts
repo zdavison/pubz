@@ -117,6 +117,28 @@ async function setup(workspaceDir: string, remoteDir: string, binDir: string) {
     '#!/bin/sh\necho "https://github.com/your-org/my-app/releases/tag/v1.3.0"\n',
   );
   chmodSync(mockGhPath, 0o755);
+
+  // --- Mock claude CLI ---
+  const mockClaudePath = join(binDir, 'claude');
+  writeFileSync(
+    mockClaudePath,
+    `#!/bin/sh
+cat <<'NOTES'
+### Features
+
+- Added feature A.
+
+### Bug Fixes
+
+- Fixed an edge case in the parser.
+
+### Documentation
+
+- Updated README.
+NOTES
+`,
+  );
+  chmodSync(mockClaudePath, 0o755);
 }
 
 async function runDemo(workspaceDir: string, binDir: string): Promise<string> {

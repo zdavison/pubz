@@ -181,86 +181,76 @@ bunx pubz
 
 <!-- demo-output-start -->
 ```
-pubz - npm package publisher
-══════════════════════════════
+📦 pubz  npm package publisher
 
-Discovering packages...
+┌─ Packages ─────────────────────────────────────────
+│  • my-app@1.2.0
+└────────────────────────────────────────────────────
 
-Found 1 publishable package(s):
-
-  • my-app@1.2.0
-
-Step 1: Version Management
-──────────────────────────────
-
-Current version: 1.2.0
-
-Bumping version (minor): 1.2.0 → 1.3.0
-
-Updating version to 1.3.0 in all packages...
-
-  Updated my-app: 1.2.0 -> 1.3.0
-Committing version bump...
+┌─ 🔖 Version ───────────────────────────────────────
+│  Bumping (minor): 1.2.0 → 1.3.0
+│  Updating all packages...
 chore: release v1.3.0
-  Changes committed
+└────────────────────────────────────────────────────
 
-
-Publishing to: https://registry.npmjs.org
-
-Step 2: Building Packages
-──────────────────────────────
-
-Running build...
-
+┌─ 🏗️  Build ───────────────────────────────────────
+│  Running bun run build...
+│
 $ bun build.js
 Bundled 3 modules in 2ms
 
   index.js  4.12 KB  (entry point)
 
+│    ✓ my-app
+└────────────────────────────────────────────────────
 
-Build completed successfully
-
-Verifying builds...
-
-  ✓ my-app build verified
-
-Step 3: Publishing to npm
-──────────────────────────────
-
-About to publish the following packages:
+Publishing to https://registry.npmjs.org:
 
   • my-app@1.3.0
 
-Registry: https://registry.npmjs.org
-
-Preparing packages for publish...
-
-Publishing packages...
-
-Publishing my-app@1.3.0...
+┌─ 🚀 Publish ───────────────────────────────────────
+│  Preparing packages...
+│    Publishing my-app...
 npm notice
 npm notice Publishing to https://registry.npmjs.org
 npm notice
-  my-app published successfully
+│    ✓ my-app@1.3.0
+└────────────────────────────────────────────────────
 
-══════════════════════════════
-Publishing complete!
+✅ Published v1.3.0!
 
-Published version: 1.3.0
+┌─ 📋 Changelog ─────────────────────────────────────
+│  Since v1.2.0
+│  c7cd301 docs: update README
+│  edc1e5e fix: fix edge case in parser
+│  1448f40 feat: add feature A
+└────────────────────────────────────────────────────
 
-Changes since v1.2.0:
-  bec9417 docs: update README
-  a15b414 fix: fix edge case in parser
-  86d54a8 feat: add feature A
 
-Creating git tag...
-  Tag v1.3.0 created
-Pushing tag to origin...
+┌─ ✨ AI Release Notes ───────────────────────────────
+│  Generating...
+│
+│  ### Features
+│
+│  - Added feature A.
+│
+│  ### Bug Fixes
+│
+│  - Fixed an edge case in the parser.
+│
+│  ### Documentation
+│
+│  - Updated README.
+└────────────────────────────────────────────────────
+
+┌─ 🏷️  Release ─────────────────────────────────────
+│  Creating tag v1.3.0...
+│  Pushing tag to origin...
  * [new tag]         v1.3.0 -> v1.3.0
-  Tag v1.3.0 pushed to origin
-Creating GitHub release...
-  Release created: https://github.com/your-org/my-app/releases/tag/v1.3.0
+│  Creating GitHub release...
+│    Release: https://github.com/your-org/my-app/releases/tag/v1.3.0
+└────────────────────────────────────────────────────
 
-Done!
+🎉 Done!
 ```
 <!-- demo-output-end -->
