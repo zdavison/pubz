@@ -583,7 +583,7 @@ async function main() {
   if (!options.ci && changelog.commits.length > 0) {
     const claudeAvailable = await isClaudeAvailable();
     if (claudeAvailable) {
-      const useAI = await confirm('Generate release notes with AI (claude)?');
+      const useAI = skipConfirms || await confirm('Generate release notes with AI (claude)?');
       if (useAI) {
         console.log(cyan('Generating AI release notes...'));
         const aiNotes = await generateAIReleaseNotes(changelog.commits, newVersion);
