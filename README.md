@@ -249,9 +249,9 @@ Publishing complete!
 Published version: 1.3.0
 
 Changes since v1.2.0:
-  e6ec6d2 docs: update README
-  2414a36 fix: fix edge case in parser
-  e8061ab feat: add feature A
+  bec9417 docs: update README
+  a15b414 fix: fix edge case in parser
+  86d54a8 feat: add feature A
 
 Creating git tag...
   Tag v1.3.0 created

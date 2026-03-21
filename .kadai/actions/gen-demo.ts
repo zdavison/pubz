@@ -1,11 +1,7 @@
 #!/usr/bin/env bun
-/**
- * Generates the "Example Output" section of README.md by running pubz against
- * a realistic isolated fake package. Run with: bun scripts/gen-demo.ts
- *
- * This produces an automatically up-to-date demo: any new pubz features that
- * produce output will appear here without manual intervention.
- */
+// kadai:name Generate Demo
+// kadai:emoji 🎬
+// kadai:description Regenerate the README "Example Output" section from a live pubz dry-run
 
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(__dirname, '..');
+const repoRoot = join(__dirname, '..', '..');
 
 async function main() {
   const workspaceDir = mkdtempSync(join(tmpdir(), 'pubz-demo-workspace-'));
@@ -24,8 +20,17 @@ async function main() {
   try {
     await setup(workspaceDir, remoteDir, binDir);
     const output = await runDemo(workspaceDir, binDir);
-    updateReadme(output);
-    console.log('README.md updated.');
+
+    console.log(output.trim());
+    console.log('');
+
+    const answer = await ask('Update README.md with this output? [y/N] ');
+    if (answer.trim().toLowerCase() === 'y') {
+      updateReadme(output);
+      console.log('README.md updated.');
+    } else {
+      console.log('Skipped.');
+    }
   } finally {
     rmSync(workspaceDir, { recursive: true, force: true });
     rmSync(remoteDir, { recursive: true, force: true });
@@ -185,6 +190,18 @@ function updateReadme(output: string) {
     readme.slice(endIdx);
 
   writeFileSync(readmePath, newReadme);
+}
+
+function ask(question: string): Promise<string> {
+  return new Promise((resolve) => {
+    process.stdout.write(question);
+    let data = '';
+    process.stdin.setEncoding('utf-8');
+    process.stdin.once('data', (chunk) => {
+      data = chunk.toString();
+      resolve(data);
+    });
+  });
 }
 
 function git(args: string[], cwd: string): Promise<void> {
