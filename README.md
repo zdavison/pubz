@@ -184,24 +184,23 @@ bunx pubz
 📦 pubz  npm package publisher
 
 ┌─ Packages ─────────────────────────────────────────
-│  • my-app@1.2.0
+  • my-app@1.2.0
 └────────────────────────────────────────────────────
 
 ┌─ 🔖 Version ───────────────────────────────────────
-│  Bumping (minor): 1.2.0 → 1.3.0
-│  Updating all packages...
+  Bumping (minor): 1.2.0 → 1.3.0
+  Updating all packages...
 chore: release v1.3.0
 └────────────────────────────────────────────────────
 
 ┌─ 🏗️  Build ───────────────────────────────────────
-│  Running bun run build...
-│
+  Running bun run build...
+  
 $ bun build.js
 Bundled 3 modules in 2ms
 
   index.js  4.12 KB  (entry point)
 
-│    ✓ my-app
 └────────────────────────────────────────────────────
 
 Publishing to https://registry.npmjs.org:
@@ -209,46 +208,43 @@ Publishing to https://registry.npmjs.org:
   • my-app@1.3.0
 
 ┌─ 🚀 Publish ───────────────────────────────────────
-│  Preparing packages...
-│    Publishing my-app...
+  Preparing packages...
 npm notice
 npm notice Publishing to https://registry.npmjs.org
 npm notice
-│    ✓ my-app@1.3.0
 └────────────────────────────────────────────────────
 
 ✅ Published v1.3.0!
 
 ┌─ 📋 Changelog ─────────────────────────────────────
-│  Since v1.2.0
-│  c7cd301 docs: update README
-│  edc1e5e fix: fix edge case in parser
-│  1448f40 feat: add feature A
+  Since v1.2.0
+  4e215fd docs: update README
+  5cbdd88 fix: fix edge case in parser
+  6142990 feat: add feature A
 └────────────────────────────────────────────────────
 
 
 ┌─ ✨ AI Release Notes ───────────────────────────────
-│  Generating...
-│
-│  ### Features
-│
-│  - Added feature A.
-│
-│  ### Bug Fixes
-│
-│  - Fixed an edge case in the parser.
-│
-│  ### Documentation
-│
-│  - Updated README.
+  Generating...
+  
+  ### Features
+  
+  - Added feature A.
+  
+  ### Bug Fixes
+  
+  - Fixed an edge case in the parser.
+  
+  ### Documentation
+  
+  - Updated README.
 └────────────────────────────────────────────────────
 
 ┌─ 🏷️  Release ─────────────────────────────────────
-│  Creating tag v1.3.0...
-│  Pushing tag to origin...
+  Creating tag v1.3.0...
+  Pushing tag to origin...
  * [new tag]         v1.3.0 -> v1.3.0
-│  Creating GitHub release...
-│    Release: https://github.com/your-org/my-app/releases/tag/v1.3.0
+  Creating GitHub release...
 └────────────────────────────────────────────────────
 
 🎉 Done!
