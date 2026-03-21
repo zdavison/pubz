@@ -1,0 +1,25 @@
+src/colors.ts
+  13ebcd9fe95a4b26 54
+src/publish.ts
+  13ebcd9fe95a4b26 17-20,36,41,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "555dbbce89ea68bc0d6e62c62fd5c333b3675844",
+  "prompts": {
+    "13ebcd9fe95a4b26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a37e8654-46f8-403e-bc76-fbb376c84b12",
+        "model": "<synthetic>"
+      },
+      "human_author": "deer-agent <deer@noreply>",
+      "messages": [],
+      "total_additions": 29,
+      "total_deletions": 94,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
