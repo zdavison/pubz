@@ -65,12 +65,8 @@ export async function runBuild(
   dryRun: boolean,
 ): Promise<BuildResult> {
   if (dryRun) {
-    console.log('[DRY RUN] Would run: bun run build');
     return { success: true };
   }
-
-  console.log('Running build...');
-  console.log('');
 
   const result = await run('bun', ['run', 'build'], cwd);
 
@@ -78,8 +74,6 @@ export async function runBuild(
     return { success: false, error: 'Build failed' };
   }
 
-  console.log('');
-  console.log('Build completed successfully');
   return { success: true };
 }
 
@@ -158,13 +152,9 @@ export async function publishPackage(
   dryRun: boolean,
 ): Promise<PublishResult> {
   if (dryRun) {
-    console.log(
-      `  [DRY RUN] Would publish ${pkg.name}@${pkg.version} to ${registry}`,
-    );
     return { success: true };
   }
 
-  console.log(`Publishing ${pkg.name}@${pkg.version}...`);
 
   const args = ['publish', '--registry', registry, '--access', 'public'];
 
@@ -198,7 +188,6 @@ export async function publishPackage(
     return { success: false, error: `Failed to publish ${pkg.name}` };
   }
 
-  console.log(`  ${pkg.name} published successfully`);
   return { success: true };
 }
 
@@ -222,7 +211,6 @@ export async function commitVersionBump(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would commit version bump for ${tagName}`);
     return { success: true };
   }
 
@@ -232,7 +220,6 @@ export async function commitVersionBump(
     return { success: true };
   }
 
-  console.log('Committing version bump...');
   const addResult = await run('git', ['add', '-A'], cwd);
   if (addResult.code !== 0) {
     return { success: false, error: 'Failed to stage changes' };
@@ -247,7 +234,6 @@ export async function commitVersionBump(
     return { success: false, error: 'Failed to commit changes' };
   }
 
-  console.log('  Changes committed');
   return { success: true };
 }
 
@@ -259,7 +245,6 @@ export async function createGitTag(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would create git tag: ${tagName}`);
     return { success: true };
   }
 
@@ -271,7 +256,6 @@ export async function createGitTag(
     };
   }
 
-  console.log(`  Tag ${tagName} created`);
   return { success: true };
 }
 
@@ -283,7 +267,6 @@ export async function pushGitTag(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would push git tag: ${tagName}`);
     return { success: true };
   }
 
@@ -298,6 +281,5 @@ export async function pushGitTag(
     return { success: false, error: `Failed to push tag ${tagName}` };
   }
 
-  console.log(`  Tag ${tagName} pushed to origin`);
   return { success: true };
 }

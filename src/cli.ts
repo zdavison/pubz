@@ -7,6 +7,9 @@ import {
   bold,
   cyan,
   dim,
+  frameFooter,
+  frameHeader,
+  frameLine,
   green,
   muted,
   red,
@@ -52,8 +55,7 @@ function getVersion(): string {
 }
 
 function printUsage() {
-  console.log(`
-pubz - Interactive npm package publisher
+  console.log(`pubz - Interactive npm package publisher
 
 Usage: pubz [command] [options]
 
@@ -159,26 +161,23 @@ async function main() {
     process.exit(1);
   }
 
-  // Helper to check if we should skip confirmations
   const skipConfirms = options.skipConfirms || options.ci;
-  // Helper to check if we should skip all prompts (including selections)
   const skipAllPrompts = options.ci;
 
   const cwd = process.cwd();
 
   if (options.dryRun) {
-    console.log(yellow(bold('DRY RUN MODE')) + dim(' - No actual changes will be made'));
+    console.log(yellow(bold('⚠️  DRY RUN')) + dim(' — no actual changes will be made'));
     console.log('');
   }
 
-  console.log(bold('pubz') + dim(' - npm package publisher'));
-  console.log(dim('═'.repeat(30)));
+  console.log('📦 ' + bold('pubz') + dim('  npm package publisher'));
   console.log('');
 
   // Check for uncommitted changes
   const uncommitted = await hasUncommittedChanges(cwd);
   if (uncommitted.hasChanges && !options.dryRun) {
-    console.log(red(bold('Error:')) + ' You have uncommitted changes:');
+    console.error(red(bold('Error:')) + ' You have uncommitted changes:');
     console.log('');
     for (const file of uncommitted.files.slice(0, 10)) {
       console.log(`  ${yellow(file)}`);
@@ -193,12 +192,7 @@ async function main() {
   }
 
   // Discover packages
-  console.log(cyan('Discovering packages...'));
-  console.log('');
-
   let packages = await discoverPackages(cwd);
-
-  // Filter out private packages
   const publishablePackages = packages.filter((p) => !p.isPrivate);
 
   if (publishablePackages.length === 0) {
@@ -211,18 +205,17 @@ async function main() {
     process.exit(1);
   }
 
-  // Sort by dependency order
   packages = sortByDependencyOrder(publishablePackages);
 
-  console.log(`Found ${green(bold(String(packages.length)))} publishable package(s):`);
-  console.log('');
+  frameHeader('Packages');
   for (const pkg of packages) {
     const deps =
       pkg.localDependencies.length > 0
         ? dim(` (depends on: ${pkg.localDependencies.join(', ')})`)
         : '';
-    console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(pkg.version)}${deps}`);
+    frameLine(`${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(pkg.version)}${deps}`);
   }
+  frameFooter();
   console.log('');
 
   // Package selection (skip if only one package or --ci flag)
@@ -248,23 +241,18 @@ async function main() {
   // Get current version (use first package as source of truth)
   const currentVersion = packages[0].version;
 
-  // Step 1: Version Management
-  console.log(bold(cyan('Step 1:')) + ' Version Management');
-  console.log(dim('─'.repeat(30)));
-  console.log('');
-  console.log(`Current version: ${yellow(currentVersion)}`);
-  console.log('');
+  // ── Version ────────────────────────────────────────────────────────────────
 
   let newVersion = currentVersion;
+  let didBump = false;
 
-  // Handle version from --version flag (bump type or explicit version)
   if (options.version) {
     const bumpTypes = ['patch', 'minor', 'major'] as const;
     const isBumpType = bumpTypes.includes(options.version as (typeof bumpTypes)[number]);
 
     if (isBumpType) {
       newVersion = bumpVersion(currentVersion, options.version as VersionBumpType);
-      console.log(`Bumping version (${options.version}): ${yellow(currentVersion)} → ${green(newVersion)}`);
+      didBump = true;
     } else {
       const cleaned = options.version.startsWith('v') ? options.version.slice(1) : options.version;
       if (!isValidVersion(cleaned)) {
@@ -273,59 +261,22 @@ async function main() {
         process.exit(1);
       }
       newVersion = cleaned;
-      console.log(`Using explicit version: ${green(newVersion)}`);
+      didBump = true;
     }
-    console.log('');
-
-    console.log(`Updating version to ${green(newVersion)} in all packages...`);
-    console.log('');
-
-    for (const pkg of packages) {
-      await updatePackageVersion(pkg, newVersion, options.dryRun);
-    }
-
-    // Update local dependency versions
-    await updateLocalDependencyVersions(packages, newVersion, options.dryRun);
-
-    // Update in-memory versions
-    for (const pkg of packages) {
-      pkg.version = newVersion;
-    }
-
-    // Commit version bump
-    const commitResult = await commitVersionBump(newVersion, cwd, options.dryRun);
-    if (!commitResult.success) {
-      console.error(red(bold('Failed to commit version bump:')) + ` ${commitResult.error}`);
-      closePrompt();
-      process.exit(1);
-    }
-
-    console.log('');
   } else if (!skipAllPrompts) {
-    // With --yes: skip the confirmation but still ask for bump type
-    // Without --yes: ask both confirmation and bump type
+    console.log(`Current version: ${yellow(currentVersion)}`);
+    console.log('');
+
     const shouldBump = skipConfirms || (await confirm('Bump version before publishing?'));
 
     if (shouldBump) {
       const bumpChoice = await select<VersionBumpType | 'custom'>(
         'Select version bump type:',
         [
-          {
-            label: `patch (${previewBump(currentVersion, 'patch')})`,
-            value: 'patch',
-          },
-          {
-            label: `minor (${previewBump(currentVersion, 'minor')})`,
-            value: 'minor',
-          },
-          {
-            label: `major (${previewBump(currentVersion, 'major')})`,
-            value: 'major',
-          },
-          {
-            label: 'custom version',
-            value: 'custom',
-          },
+          { label: `patch (${previewBump(currentVersion, 'patch')})`, value: 'patch' },
+          { label: `minor (${previewBump(currentVersion, 'minor')})`, value: 'minor' },
+          { label: `major (${previewBump(currentVersion, 'major')})`, value: 'major' },
+          { label: 'custom version', value: 'custom' },
         ],
       );
 
@@ -333,7 +284,6 @@ async function main() {
         let customVersion = '';
         while (!customVersion) {
           const input = await prompt(`  Enter version: `);
-          // Strip leading 'v' prefix if provided
           const cleaned = input.startsWith('v') ? input.slice(1) : input;
           if (isValidVersion(cleaned)) {
             customVersion = cleaned;
@@ -346,35 +296,43 @@ async function main() {
         newVersion = bumpVersion(currentVersion, bumpChoice);
       }
 
-      console.log('');
-      console.log(`Updating version to ${green(newVersion)} in all packages...`);
-      console.log('');
-
-      for (const pkg of packages) {
-        await updatePackageVersion(pkg, newVersion, options.dryRun);
-      }
-
-      // Update local dependency versions
-      await updateLocalDependencyVersions(packages, newVersion, options.dryRun);
-
-      // Update in-memory versions
-      for (const pkg of packages) {
-        pkg.version = newVersion;
-      }
-
-      // Commit version bump
-      const commitResult = await commitVersionBump(newVersion, cwd, options.dryRun);
-      if (!commitResult.success) {
-        console.error(red(bold('Failed to commit version bump:')) + ` ${commitResult.error}`);
-        closePrompt();
-        process.exit(1);
-      }
-
-      console.log('');
+      didBump = true;
     }
+
+    console.log('');
   }
 
-  // Step 2: Registry Selection
+  if (didBump) {
+    frameHeader('🔖 Version');
+    if (options.version && ['patch', 'minor', 'major'].includes(options.version)) {
+      frameLine(`Bumping (${options.version}): ${yellow(currentVersion)} → ${green(newVersion)}`);
+    } else {
+      frameLine(`${yellow(currentVersion)} → ${green(newVersion)}`);
+    }
+    frameLine(dim('Updating all packages...'));
+
+    for (const pkg of packages) {
+      await updatePackageVersion(pkg, newVersion, options.dryRun);
+    }
+    await updateLocalDependencyVersions(packages, newVersion, options.dryRun);
+    for (const pkg of packages) {
+      pkg.version = newVersion;
+    }
+
+    const commitResult = await commitVersionBump(newVersion, cwd, options.dryRun);
+    if (!commitResult.success) {
+      frameFooter();
+      console.error(red(bold('Failed to commit version bump:')) + ` ${commitResult.error}`);
+      closePrompt();
+      process.exit(1);
+    }
+
+    frameFooter();
+    console.log('');
+  }
+
+  // ── Registry ───────────────────────────────────────────────────────────────
+
   let registry = options.registry;
 
   if (!registry && !skipAllPrompts) {
@@ -388,109 +346,58 @@ async function main() {
         value: REGISTRIES.github,
       },
     ]);
+    console.log('');
   }
 
   registry = registry || REGISTRIES.npm;
 
-  console.log('');
-  console.log(`Publishing to: ${cyan(registry)}`);
-  console.log('');
+  // ── Build ──────────────────────────────────────────────────────────────────
 
-  // Auth verification (skip in dry run mode and CI mode)
-  // In CI mode, skip auth check because:
-  // - OIDC Trusted Publishing authenticates at publish time, not beforehand
-  // - If auth is misconfigured, the publish command will fail with a clear error
-  if (!options.dryRun && !options.ci) {
-    console.log(cyan('Verifying npm authentication...'));
-    const authResult = await checkNpmAuth(registry);
-
-    if (!authResult.authenticated) {
-      console.log('');
-      console.log(yellow('Not logged in to npm.') + ' Starting login...');
-      console.log('');
-
-      pausePrompt();
-      const loginResult = await npmLogin(registry);
-      resetPrompt();
-      if (!loginResult.success) {
-        console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
-        closePrompt();
-        process.exit(1);
-      }
-
-      // Verify login succeeded
-      const verifyAuth = await checkNpmAuth(registry);
-      if (!verifyAuth.authenticated) {
-        console.error(red(bold('Error:')) + ' Login did not complete successfully.');
-        closePrompt();
-        process.exit(1);
-      }
-
-      console.log('');
-      console.log(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
-    } else {
-      console.log(green('Authenticated as') + ` ${cyan(authResult.username ?? 'unknown')}`);
-    }
-    console.log('');
-  }
-
-  // Step 3: Build
   if (!options.skipBuild) {
-    console.log(bold(cyan('Step 2:')) + ' Building Packages');
-    console.log(dim('─'.repeat(30)));
-    console.log('');
+    frameHeader('🏗️  Build');
+    frameLine(dim('Running bun run build...'));
+    frameLine();
 
     const buildResult = await runBuild(cwd, options.dryRun);
     if (!buildResult.success) {
+      frameFooter();
       console.error(red(bold('Build failed:')) + ` ${buildResult.error}`);
       closePrompt();
       process.exit(1);
     }
 
-    console.log('');
-    console.log(cyan('Verifying builds...'));
-    console.log('');
-
     let allBuildsVerified = true;
     for (const pkg of packages) {
       const result = await verifyBuild(pkg);
       if (result.success) {
-        console.log(`  ${green('✓')} ${pkg.name} build verified`);
+        frameLine(`  ${green('✓')} ${pkg.name}`);
       } else {
-        console.error(`  ${red('✗')} ${pkg.name}: ${result.error}`);
+        frameLine(`  ${red('✗')} ${pkg.name}: ${result.error}`);
         allBuildsVerified = false;
       }
     }
 
+    frameFooter();
     console.log('');
 
     if (!allBuildsVerified) {
-      console.error(
-        red('Build verification failed.') + muted(' Please fix the issues and try again.'),
-      );
+      console.error(red('Build verification failed.') + muted(' Please fix the issues and try again.'));
       closePrompt();
       process.exit(1);
     }
   }
 
-  // Step 4: Publish
-  console.log(bold(cyan('Step 3:')) + ' Publishing to npm');
-  console.log(dim('─'.repeat(30)));
-  console.log('');
+  // ── Publish ────────────────────────────────────────────────────────────────
 
   if (options.dryRun) {
-    console.log(
-      yellow('[DRY RUN]') + ` Would publish the following packages to ${cyan(registry)}:`,
-    );
+    console.log(yellow('[DRY RUN]') + ` Would publish to ${cyan(registry)}:`);
   } else {
-    console.log('About to publish the following packages:');
+    console.log(`Publishing to ${cyan(registry)}:`);
   }
   console.log('');
   for (const pkg of packages) {
     console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
   }
-  console.log('');
-  console.log(`Registry: ${cyan(registry)}`);
   console.log('');
 
   if (!options.dryRun && !skipConfirms) {
@@ -503,22 +410,51 @@ async function main() {
     console.log('');
   }
 
-  console.log(cyan('Preparing packages for publish...'));
-  console.log('');
+  frameHeader('🚀 Publish');
 
-  // Transform workspace: references to actual versions for publishing
+  // Auth verification (skip in dry run mode and CI mode)
+  if (!options.dryRun && !options.ci) {
+    frameLine(dim('Verifying authentication...'));
+    const authResult = await checkNpmAuth(registry);
+
+    if (!authResult.authenticated) {
+      frameLine(yellow('Not authenticated.') + dim(' Starting login...'));
+      frameLine();
+
+      pausePrompt();
+      const loginResult = await npmLogin(registry);
+      resetPrompt();
+
+      if (!loginResult.success) {
+        frameFooter();
+        console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
+        closePrompt();
+        process.exit(1);
+      }
+
+      const verifyAuth = await checkNpmAuth(registry);
+      if (!verifyAuth.authenticated) {
+        frameFooter();
+        console.error(red(bold('Error:')) + ' Login did not complete successfully.');
+        closePrompt();
+        process.exit(1);
+      }
+
+      frameLine(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
+      frameLine();
+    } else {
+      frameLine(dim(`Authenticated as ${cyan(authResult.username ?? 'unknown')}`));
+      frameLine();
+    }
+  }
+
+  frameLine(dim('Preparing packages...'));
+
   const workspaceTransforms = await transformWorkspaceProtocolForPublish(
     packages,
     newVersion,
     options.dryRun,
   );
-
-  if (workspaceTransforms.length > 0 || options.dryRun) {
-    console.log('');
-  }
-
-  console.log(cyan('Publishing packages...'));
-  console.log('');
 
   const publishContext: PublishContext = {
     otp: options.otp,
@@ -533,143 +469,140 @@ async function main() {
 
   try {
     for (const pkg of packages) {
+      if (options.dryRun) {
+        frameLine(`  ${dim('[dry run]')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+      } else {
+        frameLine(dim(`  Publishing ${pkg.name}...`));
+      }
+
       const result = await publishPackage(pkg, registry, publishContext, options.dryRun);
+
       if (!result.success) {
         publishFailed = true;
         failedPackageName = pkg.name;
         failedError = result.error ?? 'Unknown error';
         break;
       }
+
+      if (!options.dryRun) {
+        frameLine(`  ${green('✓')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+      }
     }
   } finally {
-    // Restore workspace: references
     if (workspaceTransforms.length > 0) {
-      console.log('');
       await restoreWorkspaceProtocol(workspaceTransforms);
     }
   }
 
   if (publishFailed) {
+    frameFooter();
     console.error(red(bold('Failed to publish')) + ` ${cyan(failedPackageName)}: ${failedError}`);
     console.log('');
-    console.log(red('Stopping publish process.'));
+    console.error(red('Stopping publish process.'));
     closePrompt();
     process.exit(1);
   }
 
+  frameFooter();
+  console.log('');
+
   if (options.dryRun) {
-    console.log('');
     console.log(muted('Run without --dry-run to actually publish.'));
+    console.log('');
   }
 
-  console.log('');
-  console.log(dim('═'.repeat(30)));
-  console.log(green(bold('Publishing complete!')));
-  console.log('');
-  console.log(`Published version: ${green(bold(newVersion))}`);
+  console.log('✅ ' + green(bold(`Published v${newVersion}!`)));
   console.log('');
 
-  // Step 5: Git tagging & release
+  // ── Release ────────────────────────────────────────────────────────────────
+
   const changelog = await generateChangelog(cwd);
 
   if (changelog.terminal) {
-    console.log(bold('Changes since ') + cyan(changelog.previousTag ?? 'initial') + bold(':'));
+    console.log(bold('Changes since ') + cyan(changelog.previousTag ?? 'initial') + ':');
     console.log(changelog.terminal);
     console.log('');
   }
 
-  // Optionally generate AI release notes if claude CLI is available
   let releaseNotes = changelog.markdown;
   if (!options.ci && changelog.commits.length > 0) {
     const claudeAvailable = await isClaudeAvailable();
     if (claudeAvailable) {
       const useAI = await confirm('Generate release notes with AI (claude)?');
       if (useAI) {
-        console.log(cyan('Generating AI release notes...'));
+        console.log('');
+        console.log(dim('Generating AI release notes...'));
         const aiNotes = await generateAIReleaseNotes(changelog.commits, newVersion);
         if (aiNotes) {
           releaseNotes = aiNotes;
           console.log('');
           console.log(bold('AI-generated release notes:'));
           console.log(aiNotes);
-          console.log('');
         } else {
           console.log(yellow('AI generation failed, falling back to commit list.') + dim(' (run with --verbose for details)'));
         }
+        console.log('');
       }
     }
   }
 
   if (!options.dryRun) {
+    let shouldTag: boolean;
+    let shouldPush = false;
+    let shouldRelease = false;
+
     if (options.ci) {
-      // In CI mode, automatically create and push git tag
-      console.log(cyan('Creating git tag...'));
+      shouldTag = true;
+      shouldPush = true;
+      shouldRelease = !!releaseNotes;
+    } else {
+      shouldTag = skipConfirms || (await confirm(`Create a git tag for ${cyan(`v${newVersion}`)}?`));
+      if (shouldTag) {
+        shouldPush = skipConfirms || (await confirm('Push tag to origin?'));
+        if (shouldPush && releaseNotes) {
+          shouldRelease = skipConfirms || (await confirm('Create a GitHub release?'));
+        }
+      }
+      if (shouldTag) console.log('');
+    }
+
+    if (shouldTag) {
+      frameHeader('🏷️  Release');
+      frameLine(dim(`Creating tag v${newVersion}...`));
       const tagResult = await createGitTag(newVersion, cwd, options.dryRun);
 
       if (tagResult.success) {
-        console.log(cyan('Pushing tag to origin...'));
-        await pushGitTag(newVersion, cwd, options.dryRun);
+        if (shouldPush) {
+          frameLine(dim('Pushing tag to origin...'));
+          await pushGitTag(newVersion, cwd, options.dryRun);
 
-        if (releaseNotes) {
-          console.log(cyan('Creating GitHub release...'));
-          const releaseResult = await createGitHubRelease(
-            newVersion,
-            releaseNotes,
-            cwd,
-            options.dryRun,
-          );
-          if (releaseResult.success && releaseResult.url) {
-            console.log(`  Release created: ${cyan(releaseResult.url)}`);
-          } else if (!releaseResult.success) {
-            console.error(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
-          }
-        }
-      } else {
-        console.error(red(tagResult.error ?? 'Failed to create git tag'));
-      }
-      console.log('');
-    } else {
-      const shouldTag = skipConfirms || await confirm(`Create a git tag for ${cyan(`v${newVersion}`)}?`);
-
-      if (shouldTag) {
-        console.log('');
-        const tagResult = await createGitTag(newVersion, cwd, options.dryRun);
-
-        if (tagResult.success) {
-          const shouldPush = skipConfirms || await confirm('Push tag to origin?');
-          if (shouldPush) {
-            await pushGitTag(newVersion, cwd, options.dryRun);
-
-            if (releaseNotes) {
-              const shouldRelease = skipConfirms || await confirm('Create a GitHub release?');
-              if (shouldRelease) {
-                const releaseResult = await createGitHubRelease(
-                  newVersion,
-                  releaseNotes,
-                  cwd,
-                  options.dryRun,
-                );
-                if (releaseResult.success && releaseResult.url) {
-                  console.log(`  Release created: ${cyan(releaseResult.url)}`);
-                } else if (!releaseResult.success) {
-                  console.error(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
-                }
-              }
-            }
-          } else {
-            console.log(
-              `Tag created locally. Push manually with: ${dim(`git push origin v${newVersion}`)}`,
+          if (releaseNotes && shouldRelease) {
+            frameLine(dim('Creating GitHub release...'));
+            const releaseResult = await createGitHubRelease(
+              newVersion,
+              releaseNotes,
+              cwd,
+              options.dryRun,
             );
+            if (releaseResult.success && releaseResult.url) {
+              frameLine(`  Release: ${cyan(releaseResult.url)}`);
+            } else if (!releaseResult.success) {
+              frameLine(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
+            }
           }
         } else {
-          console.error(red(tagResult.error ?? 'Failed to create git tag'));
+          frameLine(`Push manually: ${dim(`git push origin v${newVersion}`)}`);
         }
-        console.log('');
+      } else {
+        frameLine(red(tagResult.error ?? 'Failed to create git tag'));
       }
+
+      frameFooter();
+      console.log('');
     }
   }
 
-  console.log(green(bold('Done!')));
+  console.log('🎉 ' + green(bold('Done!')));
   closePrompt();
 }
 

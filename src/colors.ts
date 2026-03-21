@@ -36,3 +36,24 @@ export const warning = yellow;
 export const info = cyan;
 export const highlight = bold;
 export const muted = gray;
+
+// Frame helpers for structured CLI output
+const FRAME_WIDTH = 52;
+
+export function frameHeader(title: string): void {
+  const inner = `─ ${title} `;
+  const padding = '─'.repeat(Math.max(2, FRAME_WIDTH - inner.length));
+  console.log(dim(`┌${inner}${padding}`));
+}
+
+export function frameFooter(): void {
+  console.log(dim(`└${'─'.repeat(FRAME_WIDTH)}`));
+}
+
+export function frameLine(text = ''): void {
+  if (text === '') {
+    console.log(dim('│'));
+  } else {
+    console.log(dim('│') + '  ' + text);
+  }
+}
