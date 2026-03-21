@@ -400,6 +400,7 @@ async function main() {
   }
   console.log('');
 
+
   if (!options.dryRun && !skipConfirms) {
     const shouldContinue = await confirm('Continue?');
     if (!shouldContinue) {
@@ -519,8 +520,12 @@ async function main() {
   const changelog = await generateChangelog(cwd);
 
   if (changelog.terminal) {
-    console.log(bold('Changes since ') + cyan(changelog.previousTag ?? 'initial') + ':');
-    console.log(changelog.terminal);
+    frameHeader('📋 Changelog');
+    frameLine(dim(`Since ${changelog.previousTag ?? 'initial'}`));
+    for (const line of changelog.terminal.split('\n')) {
+      frameLine(line.trimStart());
+    }
+    frameFooter();
     console.log('');
   }
 
@@ -531,16 +536,19 @@ async function main() {
       const useAI = await confirm('Generate release notes with AI (claude)?');
       if (useAI) {
         console.log('');
-        console.log(dim('Generating AI release notes...'));
+        frameHeader('✨ AI Release Notes');
+        frameLine(dim('Generating...'));
         const aiNotes = await generateAIReleaseNotes(changelog.commits, newVersion);
         if (aiNotes) {
           releaseNotes = aiNotes;
-          console.log('');
-          console.log(bold('AI-generated release notes:'));
-          console.log(aiNotes);
+          frameLine();
+          for (const line of aiNotes.split('\n')) {
+            frameLine(line);
+          }
         } else {
-          console.log(yellow('AI generation failed, falling back to commit list.') + dim(' (run with --verbose for details)'));
+          frameLine(yellow('Generation failed, falling back to commit list.') + dim(' (run with --verbose for details)'));
         }
+        frameFooter();
         console.log('');
       }
     }
