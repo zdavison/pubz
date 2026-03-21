@@ -14,6 +14,10 @@ export interface PublishResult {
   error?: string;
 }
 
+// ANSI dim escape codes for greying out subprocess output
+const DIM_ON = '\x1b[90m';
+const DIM_OFF = '\x1b[39m';
+
 function run(
   command: string,
   args: string[],
@@ -29,12 +33,12 @@ function run(
 
     proc.stdout?.on('data', (data) => {
       output += data.toString();
-      process.stdout.write(data);
+      process.stdout.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.stderr?.on('data', (data) => {
       output += data.toString();
-      process.stderr.write(data);
+      process.stderr.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.on('close', (code) => {
@@ -229,6 +233,7 @@ export async function commitVersionBump(
     'git',
     ['commit', '-m', `chore: release ${tagName}`],
     cwd,
+    { silent: true },
   );
   if (commitResult.code !== 0) {
     return { success: false, error: 'Failed to commit changes' };

@@ -2,6 +2,9 @@ import { spawn } from 'node:child_process';
 import { dim } from './colors.js';
 import { runClaudePrompt } from './claude.js';
 
+// Allow overriding gh command for testing/demo
+const GH_COMMAND = process.env.PUBZ_GH_COMMAND ?? 'gh';
+
 export interface ChangelogCommit {
 	sha: string;
 	message: string;
@@ -226,7 +229,7 @@ export async function createGitHubRelease(
 	}
 
 	const result = await runSilent(
-		'gh',
+		GH_COMMAND,
 		['release', 'create', tagName, '--title', tagName, '--notes', body],
 		cwd,
 	);
