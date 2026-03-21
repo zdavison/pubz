@@ -1,0 +1,25 @@
+src/cli.ts
+  13ebcd9fe95a4b26 533
+.kadai/actions/gen-demo.ts
+  13ebcd9fe95a4b26 120-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "61fa943a741651908c27512e1c359d47117ecf24",
+  "prompts": {
+    "13ebcd9fe95a4b26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a37e8654-46f8-403e-bc76-fbb376c84b12",
+        "model": "<synthetic>"
+      },
+      "human_author": "deer-agent <deer@noreply>",
+      "messages": [],
+      "total_additions": 23,
+      "total_deletions": 1,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    }
+  }
+}
