@@ -31,6 +31,7 @@ import {
 } from './publish.js';
 import { generateChangelog, createGitHubRelease, generateAIReleaseNotes } from './changelog.js';
 import { isClaudeAvailable } from './claude.js';
+import { loadConfig } from './config.js';
 import type { PublishOptions, VersionBumpType } from './types.js';
 import {
   bumpVersion,
@@ -67,6 +68,7 @@ Options:
   --registry <url>       Specify npm registry URL (default: public npm)
   --otp <code>           One-time password for 2FA
   --skip-build           Skip the build step
+  --skip-publish         Skip npm publish (still does version bump, tag, and release)
   --yes, -y              Skip yes/no confirmation prompts (still asks for choices)
   --ci                   CI mode: skip all prompts, auto-accept everything
   --version <value>      Version bump type (patch|minor|major) or explicit version (required with --ci)
@@ -77,17 +79,34 @@ Examples:
   pubz                                           # Interactive publish
   pubz --dry-run                                 # Preview what would happen
   pubz --registry https://npm.pkg.github.com    # Publish to GitHub Packages
+  pubz --skip-publish                             # Version bump, tag, release — no npm publish
   pubz --ci --version patch                      # CI mode with patch bump
   pubz --ci --version 1.2.3                      # CI mode with explicit version
+  pubz --ci --version patch --skip-publish       # CI: bump, tag, release without npm publish
+
+Config file:
+  Place a .pubz file in your project root to set default options.
+  CLI flags always override config values.
+
+  # .pubz
+  skip-publish
+  registry=https://npm.pkg.github.com
 `);
 }
 
-function parseArgs(args: string[]): PublishOptions & { help: boolean } {
+interface ParsedArgs {
+  options: PublishOptions & { help: boolean };
+  /** Keys explicitly set via CLI flags — these take precedence over config. */
+  cliExplicit: Set<keyof PublishOptions>;
+}
+
+function parseArgs(args: string[]): ParsedArgs {
   const options: PublishOptions & { help: boolean } = {
     dryRun: false,
     registry: '',
     otp: '',
     skipBuild: false,
+    skipPublish: false,
     skipConfirms: false,
     ci: false,
     version: '',
@@ -95,34 +114,48 @@ function parseArgs(args: string[]): PublishOptions & { help: boolean } {
     help: false,
   };
 
+  const cliExplicit = new Set<keyof PublishOptions>();
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
     switch (arg) {
       case '--dry-run':
         options.dryRun = true;
+        cliExplicit.add('dryRun');
         break;
       case '--registry':
         options.registry = args[++i] || '';
+        cliExplicit.add('registry');
         break;
       case '--otp':
         options.otp = args[++i] || '';
+        cliExplicit.add('otp');
         break;
       case '--skip-build':
         options.skipBuild = true;
+        cliExplicit.add('skipBuild');
+        break;
+      case '--skip-publish':
+        options.skipPublish = true;
+        cliExplicit.add('skipPublish');
         break;
       case '--yes':
       case '-y':
         options.skipConfirms = true;
+        cliExplicit.add('skipConfirms');
         break;
       case '--ci':
         options.ci = true;
+        cliExplicit.add('ci');
         break;
       case '--version':
         options.version = args[++i] || '';
+        cliExplicit.add('version');
         break;
       case '--verbose':
         options.verbose = true;
+        cliExplicit.add('verbose');
         break;
       case '-h':
       case '--help':
@@ -131,7 +164,7 @@ function parseArgs(args: string[]): PublishOptions & { help: boolean } {
     }
   }
 
-  return options;
+  return { options, cliExplicit };
 }
 
 async function main() {
@@ -141,12 +174,26 @@ async function main() {
     process.exit(0);
   }
 
-  const options = parseArgs(process.argv.slice(2));
+  const { options, cliExplicit } = parseArgs(process.argv.slice(2));
   setVerbose(options.verbose);
 
   if (options.help) {
     printUsage();
     process.exit(0);
+  }
+
+  const cwd = process.cwd();
+
+  // Load .pubz config and apply as defaults (CLI flags take precedence)
+  const config = loadConfig(cwd);
+  if (config['skip-build'] && !cliExplicit.has('skipBuild')) {
+    options.skipBuild = config['skip-build'];
+  }
+  if (config['skip-publish'] && !cliExplicit.has('skipPublish')) {
+    options.skipPublish = config['skip-publish'];
+  }
+  if (config.registry && !cliExplicit.has('registry')) {
+    options.registry = config.registry;
   }
 
   // CI mode validation
@@ -163,8 +210,6 @@ async function main() {
 
   const skipConfirms = options.skipConfirms || options.ci;
   const skipAllPrompts = options.ci;
-
-  const cwd = process.cwd();
 
   if (options.dryRun) {
     console.log(yellow(bold('⚠️  DRY RUN')) + dim(' — no actual changes will be made'));
@@ -331,26 +376,6 @@ async function main() {
     console.log('');
   }
 
-  // ── Registry ───────────────────────────────────────────────────────────────
-
-  let registry = options.registry;
-
-  if (!registry && !skipAllPrompts) {
-    registry = await select('Select publish target:', [
-      {
-        label: 'Public npm registry (https://registry.npmjs.org)',
-        value: REGISTRIES.npm,
-      },
-      {
-        label: 'GitHub Packages (https://npm.pkg.github.com)',
-        value: REGISTRIES.github,
-      },
-    ]);
-    console.log('');
-  }
-
-  registry = registry || REGISTRIES.npm;
-
   // ── Build ──────────────────────────────────────────────────────────────────
 
   if (!options.skipBuild) {
@@ -389,130 +414,155 @@ async function main() {
 
   // ── Publish ────────────────────────────────────────────────────────────────
 
-  if (options.dryRun) {
-    console.log(yellow('[DRY RUN]') + ` Would publish to ${cyan(registry)}:`);
+  if (options.skipPublish) {
+    console.log(yellow(bold('⏭️  Skipping npm publish')) + dim(' — use without --skip-publish to publish to npm'));
+    console.log('');
   } else {
-    console.log(`Publishing to ${cyan(registry)}:`);
-  }
-  console.log('');
-  for (const pkg of packages) {
-    console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
-  }
-  console.log('');
+    // ── Registry ───────────────────────────────────────────────────────────
 
+    let registry = options.registry;
 
-  if (!options.dryRun && !skipConfirms) {
-    const shouldContinue = await confirm('Continue?');
-    if (!shouldContinue) {
-      console.log(yellow('Publish cancelled.'));
-      closePrompt();
-      process.exit(0);
+    if (!registry && !skipAllPrompts) {
+      registry = await select('Select publish target:', [
+        {
+          label: 'Public npm registry (https://registry.npmjs.org)',
+          value: REGISTRIES.npm,
+        },
+        {
+          label: 'GitHub Packages (https://npm.pkg.github.com)',
+          value: REGISTRIES.github,
+        },
+      ]);
+      console.log('');
     }
-    console.log('');
-  }
 
-  frameHeader('🚀 Publish');
+    registry = registry || REGISTRIES.npm;
 
-  // Auth verification (skip in dry run mode and CI mode)
-  if (!options.dryRun && !options.ci) {
-    frameLine(dim('Verifying authentication...'));
-    const authResult = await checkNpmAuth(registry);
-
-    if (!authResult.authenticated) {
-      frameLine(yellow('Not authenticated.') + dim(' Starting login...'));
-      frameLine();
-
-      pausePrompt();
-      const loginResult = await npmLogin(registry);
-      resetPrompt();
-
-      if (!loginResult.success) {
-        frameFooter();
-        console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
-        closePrompt();
-        process.exit(1);
-      }
-
-      const verifyAuth = await checkNpmAuth(registry);
-      if (!verifyAuth.authenticated) {
-        frameFooter();
-        console.error(red(bold('Error:')) + ' Login did not complete successfully.');
-        closePrompt();
-        process.exit(1);
-      }
-
-      frameLine(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
-      frameLine();
+    if (options.dryRun) {
+      console.log(yellow('[DRY RUN]') + ` Would publish to ${cyan(registry)}:`);
     } else {
-      frameLine(dim(`Authenticated as ${cyan(authResult.username ?? 'unknown')}`));
-      frameLine();
+      console.log(`Publishing to ${cyan(registry)}:`);
     }
-  }
-
-  frameLine(dim('Preparing packages...'));
-
-  const workspaceTransforms = await transformWorkspaceProtocolForPublish(
-    packages,
-    newVersion,
-    options.dryRun,
-  );
-
-  const publishContext: PublishContext = {
-    otp: options.otp,
-    useBrowserAuth: !options.ci,
-    onInteractiveStart: pausePrompt,
-    onInteractiveComplete: resetPrompt,
-  };
-
-  let publishFailed = false;
-  let failedPackageName = '';
-  let failedError = '';
-
-  try {
+    console.log('');
     for (const pkg of packages) {
-      if (options.dryRun) {
-        frameLine(`  ${dim('[dry run]')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+      console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+    }
+    console.log('');
+
+
+    if (!options.dryRun && !skipConfirms) {
+      const shouldContinue = await confirm('Continue?');
+      if (!shouldContinue) {
+        console.log(yellow('Publish cancelled.'));
+        closePrompt();
+        process.exit(0);
+      }
+      console.log('');
+    }
+
+    frameHeader('🚀 Publish');
+
+    // Auth verification (skip in dry run mode and CI mode)
+    if (!options.dryRun && !options.ci) {
+      frameLine(dim('Verifying authentication...'));
+      const authResult = await checkNpmAuth(registry);
+
+      if (!authResult.authenticated) {
+        frameLine(yellow('Not authenticated.') + dim(' Starting login...'));
+        frameLine();
+
+        pausePrompt();
+        const loginResult = await npmLogin(registry);
+        resetPrompt();
+
+        if (!loginResult.success) {
+          frameFooter();
+          console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
+          closePrompt();
+          process.exit(1);
+        }
+
+        const verifyAuth = await checkNpmAuth(registry);
+        if (!verifyAuth.authenticated) {
+          frameFooter();
+          console.error(red(bold('Error:')) + ' Login did not complete successfully.');
+          closePrompt();
+          process.exit(1);
+        }
+
+        frameLine(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
+        frameLine();
       } else {
-        frameLine(dim(`  Publishing ${pkg.name}...`));
-      }
-
-      const result = await publishPackage(pkg, registry, publishContext, options.dryRun);
-
-      if (!result.success) {
-        publishFailed = true;
-        failedPackageName = pkg.name;
-        failedError = result.error ?? 'Unknown error';
-        break;
-      }
-
-      if (!options.dryRun) {
-        frameLine(`  ${green('✓')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+        frameLine(dim(`Authenticated as ${cyan(authResult.username ?? 'unknown')}`));
+        frameLine();
       }
     }
-  } finally {
-    if (workspaceTransforms.length > 0) {
-      await restoreWorkspaceProtocol(workspaceTransforms);
-    }
-  }
 
-  if (publishFailed) {
+    frameLine(dim('Preparing packages...'));
+
+    const workspaceTransforms = await transformWorkspaceProtocolForPublish(
+      packages,
+      newVersion,
+      options.dryRun,
+    );
+
+    const publishContext: PublishContext = {
+      otp: options.otp,
+      useBrowserAuth: !options.ci,
+      onInteractiveStart: pausePrompt,
+      onInteractiveComplete: resetPrompt,
+    };
+
+    let publishFailed = false;
+    let failedPackageName = '';
+    let failedError = '';
+
+    try {
+      for (const pkg of packages) {
+        if (options.dryRun) {
+          frameLine(`  ${dim('[dry run]')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+        } else {
+          frameLine(dim(`  Publishing ${pkg.name}...`));
+        }
+
+        const result = await publishPackage(pkg, registry, publishContext, options.dryRun);
+
+        if (!result.success) {
+          publishFailed = true;
+          failedPackageName = pkg.name;
+          failedError = result.error ?? 'Unknown error';
+          break;
+        }
+
+        if (!options.dryRun) {
+          frameLine(`  ${green('✓')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
+        }
+      }
+    } finally {
+      if (workspaceTransforms.length > 0) {
+        await restoreWorkspaceProtocol(workspaceTransforms);
+      }
+    }
+
+    if (publishFailed) {
+      frameFooter();
+      console.error(red(bold('Failed to publish')) + ` ${cyan(failedPackageName)}: ${failedError}`);
+      console.log('');
+      console.error(red('Stopping publish process.'));
+      closePrompt();
+      process.exit(1);
+    }
+
     frameFooter();
-    console.error(red(bold('Failed to publish')) + ` ${cyan(failedPackageName)}: ${failedError}`);
     console.log('');
-    console.error(red('Stopping publish process.'));
-    closePrompt();
-    process.exit(1);
+
+    if (options.dryRun) {
+      console.log(muted('Run without --dry-run to actually publish.'));
+      console.log('');
+    }
   }
 
-  frameFooter();
-  console.log('');
-
-  if (options.dryRun) {
-    console.log(muted('Run without --dry-run to actually publish.'));
-    console.log('');
-  }
-
-  console.log('✅ ' + green(bold(`Published v${newVersion}!`)));
+  console.log('✅ ' + green(bold(`Released v${newVersion}!`)));
   console.log('');
 
   // ── Release ────────────────────────────────────────────────────────────────

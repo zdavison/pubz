@@ -23,6 +23,7 @@ export interface PublishOptions {
   registry: string;
   otp: string;
   skipBuild: boolean;
+  skipPublish: boolean;
   skipConfirms: boolean;
   ci: boolean;
   version: string;
