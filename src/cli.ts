@@ -562,8 +562,10 @@ async function main() {
     }
   }
 
-  console.log('✅ ' + green(bold(`Released v${newVersion}!`)));
-  console.log('');
+  if (!options.skipPublish) {
+    console.log('✅ ' + green(bold(`Published v${newVersion}!`)));
+    console.log('');
+  }
 
   // ── Release ────────────────────────────────────────────────────────────────
 
@@ -604,6 +606,8 @@ async function main() {
     }
   }
 
+  const errors: string[] = [];
+
   if (!options.dryRun) {
     let shouldTag: boolean;
     let shouldPush = false;
@@ -632,27 +636,37 @@ async function main() {
       if (tagResult.success) {
         if (shouldPush) {
           frameLine(dim('Pushing tag to origin...'));
-          await pushGitTag(newVersion, cwd, options.dryRun);
+          const pushResult = await pushGitTag(newVersion, cwd, options.dryRun);
 
-          if (releaseNotes && shouldRelease) {
-            frameLine(dim('Creating GitHub release...'));
-            const releaseResult = await createGitHubRelease(
-              newVersion,
-              releaseNotes,
-              cwd,
-              options.dryRun,
-            );
-            if (releaseResult.success && releaseResult.url) {
-              frameLine(`  Release: ${cyan(releaseResult.url)}`);
-            } else if (!releaseResult.success) {
-              frameLine(yellow(releaseResult.error ?? 'Failed to create GitHub release'));
+          if (pushResult.success) {
+            if (releaseNotes && shouldRelease) {
+              frameLine(dim('Creating GitHub release...'));
+              const releaseResult = await createGitHubRelease(
+                newVersion,
+                releaseNotes,
+                cwd,
+                options.dryRun,
+              );
+              if (releaseResult.success && releaseResult.url) {
+                frameLine(`  Release: ${cyan(releaseResult.url)}`);
+              } else if (!releaseResult.success) {
+                const msg = releaseResult.error ?? 'Failed to create GitHub release';
+                frameLine(red(msg));
+                errors.push(msg);
+              }
             }
+          } else {
+            const msg = pushResult.error ?? 'Failed to push tag to origin';
+            frameLine(red(msg));
+            errors.push(msg);
           }
         } else {
           frameLine(`Push manually: ${dim(`git push origin v${newVersion}`)}`);
         }
       } else {
-        frameLine(red(tagResult.error ?? 'Failed to create git tag'));
+        const msg = tagResult.error ?? 'Failed to create git tag';
+        frameLine(red(msg));
+        errors.push(msg);
       }
 
       frameFooter();
@@ -660,7 +674,14 @@ async function main() {
     }
   }
 
-  console.log('🎉 ' + green(bold('Done!')));
+  if (errors.length > 0) {
+    console.log('⚠️  ' + yellow(bold('Done with errors:')));
+    for (const err of errors) {
+      console.log(`  ${red('•')} ${err}`);
+    }
+  } else {
+    console.log('🎉 ' + green(bold('Done!')));
+  }
   closePrompt();
 }
 
