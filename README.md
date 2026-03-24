@@ -179,118 +179,74 @@ jobs:
 bunx pubz
 ```
 
+<!-- demo-output-start -->
 ```
-pubz - npm package publisher
-══════════════════════════════
+📦 pubz  npm package publisher
 
-Discovering packages...
+┌─ Packages ─────────────────────────────────────────
+  • my-app@1.2.0
+└────────────────────────────────────────────────────
 
-Found 1 publishable package(s):
+┌─ 🔖 Version ───────────────────────────────────────
+  Bumping (minor): 1.2.0 → 1.3.0
+  Updating all packages...
+chore: release v1.3.0
+└────────────────────────────────────────────────────
 
-  • pubz@0.4.0
+┌─ 🏗️  Build ───────────────────────────────────────
+  Running bun run build...
+  
+$ bun build.js
+Bundled 3 modules in 2ms
 
-Step 1: Version Management
-──────────────────────────────
+  index.js  4.12 KB  (entry point)
 
-Current version: 0.4.0
+└────────────────────────────────────────────────────
 
-? Bump version before publishing? [Y/n] n
-? Select publish target:
+Publishing to https://registry.npmjs.org:
 
-  > 1) Public npm registry (https://registry.npmjs.org)
-    2) GitHub Packages (https://npm.pkg.github.com)
+  • my-app@1.3.0
 
-  Enter choice [1-2] (default: 1): 
+┌─ 🚀 Publish ───────────────────────────────────────
+  Preparing packages...
+npm notice
+npm notice Publishing to https://registry.npmjs.org
+npm notice
+└────────────────────────────────────────────────────
 
-Publishing to: https://registry.npmjs.org
+✅ Published v1.3.0!
 
-Verifying npm authentication...
-Authenticated as zdavison
-
-Step 2: Building Packages
-──────────────────────────────
-
-Running build...
-
-$ bun build src/cli.ts --outdir dist --target node
-Bundled 10 modules in 5ms
-
-  cli.js  41.27 KB  (entry point)
+┌─ 📋 Changelog ─────────────────────────────────────
+  Since v1.2.0
+  4e215fd docs: update README
+  5cbdd88 fix: fix edge case in parser
+  6142990 feat: add feature A
+└────────────────────────────────────────────────────
 
 
-Build completed successfully
+┌─ ✨ AI Release Notes ───────────────────────────────
+  Generating...
+  
+  ### Features
+  
+  - Added feature A.
+  
+  ### Bug Fixes
+  
+  - Fixed an edge case in the parser.
+  
+  ### Documentation
+  
+  - Updated README.
+└────────────────────────────────────────────────────
 
-Verifying builds...
+┌─ 🏷️  Release ─────────────────────────────────────
+  Creating tag v1.3.0...
+  Pushing tag to origin...
+ * [new tag]         v1.3.0 -> v1.3.0
+  Creating GitHub release...
+└────────────────────────────────────────────────────
 
-  ✓ pubz build verified
-
-Step 3: Publishing to npm
-──────────────────────────────
-
-About to publish the following packages:
-
-  • pubz@0.4.0
-
-Registry: https://registry.npmjs.org
-
-? Continue? [Y/n] 
-
-Preparing packages for publish...
-
-Publishing packages...
-
-Publishing pubz@0.4.0...
-npm notice 
-npm notice 📦  pubz@0.4.0
-npm notice === Tarball Contents === 
-npm notice 7.1kB  README.md   
-npm notice 41.3kB dist/cli.js 
-npm notice 697B   package.json
-npm notice === Tarball Details === 
-npm notice name:          pubz                                    
-npm notice version:       0.4.0                                   
-npm notice filename:      pubz-0.4.0.tgz                          
-npm notice package size:  12.0 kB                                 
-npm notice unpacked size: 49.1 kB                                 
-npm notice shasum:        3026a7936458dcaa84030a0ce2e206b9f74aa65d
-npm notice integrity:     sha512-6vKMOsC7sZa87[...]w8KNx1fD45u/A==
-npm notice total files:   3                                       
-npm notice 
-npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access
-Authenticate your account at:
-https://www.npmjs.com/auth/cli/c47d9bee-2a1e-4adf-9aab-63d15acfade2
-Press ENTER to open in the browser...
-
-+ pubz@0.4.0
-  pubz published successfully
-
-══════════════════════════════
-Publishing complete!
-
-Published version: 0.4.0
-
-Changes since v0.2.12:
-  5553c95 Fix ENTER to open browser not working.
-  9aaddff Fix tag/push/release branch when using --yes.
-  0ce3ab8 Generate changlog and attach it to release page / print it out during publish.
-  5a29ca4 Merge branch 'main' of github.com:mm-zacharydavison/pubz
-  b4c47fc Clean up README.md formatting
-  2da403c Update README.md
-  88a4211 Update README with image and usage instructions
-  8a8148a Update README.md
-  2b45d21 Transform 'workspace:' definitions on publish, and restore them before any commit.
-
-? Create a git tag for v0.4.0? [Y/n] 
-
-  Tag v0.4.0 created
-? Push tag to origin? [Y/n] 
-remote: This repository moved. Please use the new location:        
-remote:   git@github.com:zdavison/pubz.git        
-To github.com:mm-zacharydavison/pubz.git
- * [new tag]         v0.4.0 -> v0.4.0
-  Tag v0.4.0 pushed to origin
-? Create a GitHub release? [Y/n] 
-  Release created: https://github.com/zdavison/pubz/releases/tag/v0.4.0
-
-Done!
+🎉 Done!
 ```
+<!-- demo-output-end -->

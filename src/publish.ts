@@ -14,6 +14,10 @@ export interface PublishResult {
   error?: string;
 }
 
+// ANSI dim escape codes for greying out subprocess output
+const DIM_ON = '\x1b[90m';
+const DIM_OFF = '\x1b[39m';
+
 function run(
   command: string,
   args: string[],
@@ -29,12 +33,12 @@ function run(
 
     proc.stdout?.on('data', (data) => {
       output += data.toString();
-      process.stdout.write(data);
+      process.stdout.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.stderr?.on('data', (data) => {
       output += data.toString();
-      process.stderr.write(data);
+      process.stderr.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.on('close', (code) => {
@@ -65,12 +69,8 @@ export async function runBuild(
   dryRun: boolean,
 ): Promise<BuildResult> {
   if (dryRun) {
-    console.log('[DRY RUN] Would run: bun run build');
     return { success: true };
   }
-
-  console.log('Running build...');
-  console.log('');
 
   const result = await run('bun', ['run', 'build'], cwd);
 
@@ -78,8 +78,6 @@ export async function runBuild(
     return { success: false, error: 'Build failed' };
   }
 
-  console.log('');
-  console.log('Build completed successfully');
   return { success: true };
 }
 
@@ -158,13 +156,9 @@ export async function publishPackage(
   dryRun: boolean,
 ): Promise<PublishResult> {
   if (dryRun) {
-    console.log(
-      `  [DRY RUN] Would publish ${pkg.name}@${pkg.version} to ${registry}`,
-    );
     return { success: true };
   }
 
-  console.log(`Publishing ${pkg.name}@${pkg.version}...`);
 
   const args = ['publish', '--registry', registry, '--access', 'public'];
 
@@ -198,7 +192,6 @@ export async function publishPackage(
     return { success: false, error: `Failed to publish ${pkg.name}` };
   }
 
-  console.log(`  ${pkg.name} published successfully`);
   return { success: true };
 }
 
@@ -222,7 +215,6 @@ export async function commitVersionBump(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would commit version bump for ${tagName}`);
     return { success: true };
   }
 
@@ -232,7 +224,6 @@ export async function commitVersionBump(
     return { success: true };
   }
 
-  console.log('Committing version bump...');
   const addResult = await run('git', ['add', '-A'], cwd);
   if (addResult.code !== 0) {
     return { success: false, error: 'Failed to stage changes' };
@@ -242,12 +233,12 @@ export async function commitVersionBump(
     'git',
     ['commit', '-m', `chore: release ${tagName}`],
     cwd,
+    { silent: true },
   );
   if (commitResult.code !== 0) {
     return { success: false, error: 'Failed to commit changes' };
   }
 
-  console.log('  Changes committed');
   return { success: true };
 }
 
@@ -259,7 +250,6 @@ export async function createGitTag(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would create git tag: ${tagName}`);
     return { success: true };
   }
 
@@ -271,7 +261,6 @@ export async function createGitTag(
     };
   }
 
-  console.log(`  Tag ${tagName} created`);
   return { success: true };
 }
 
@@ -283,8 +272,13 @@ export async function pushGitTag(
   const tagName = `v${version}`;
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would push git tag: ${tagName}`);
     return { success: true };
+  }
+
+  // Push the current branch first so the version bump commit is not orphaned
+  const branchResult = await run('git', ['push'], cwd);
+  if (branchResult.code !== 0) {
+    return { success: false, error: 'Failed to push bump commit to origin' };
   }
 
   const result = await run('git', ['push', 'origin', tagName], cwd);
@@ -292,6 +286,5 @@ export async function pushGitTag(
     return { success: false, error: `Failed to push tag ${tagName}` };
   }
 
-  console.log(`  Tag ${tagName} pushed to origin`);
   return { success: true };
 }

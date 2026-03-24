@@ -49,11 +49,7 @@ export async function transformWorkspaceProtocolForPublish(
                 ? newVersion
                 : `${modifier}${newVersion}`;
 
-            if (dryRun) {
-              console.log(
-                `  [DRY RUN] Would temporarily transform ${pkg.name} ${depType}.${depName}: ${oldVersion} -> ${newVersionSpec}`,
-              );
-            } else {
+            if (!dryRun) {
               transforms.push({
                 packageJsonPath: pkg.packageJsonPath,
                 depType,
@@ -73,7 +69,6 @@ export async function transformWorkspaceProtocolForPublish(
         pkg.packageJsonPath,
         `${JSON.stringify(packageJson, null, 2)}\n`,
       );
-      console.log(`  Transformed workspace references in ${pkg.name}`);
     }
   }
 
@@ -108,9 +103,6 @@ export async function restoreWorkspaceProtocol(
     await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   }
 
-  if (transforms.length > 0) {
-    console.log(`  Restored workspace references in ${byPath.size} package(s)`);
-  }
 }
 
 /**
@@ -152,9 +144,6 @@ export async function updatePackageVersion(
   packageJson.version = newVersion;
 
   if (dryRun) {
-    console.log(
-      `  [DRY RUN] Would update ${pkg.name}: ${pkg.version} -> ${newVersion}`,
-    );
     return;
   }
 
@@ -162,7 +151,6 @@ export async function updatePackageVersion(
     pkg.packageJsonPath,
     `${JSON.stringify(packageJson, null, 2)}\n`,
   );
-  console.log(`  Updated ${pkg.name}: ${pkg.version} -> ${newVersion}`);
 }
 
 export async function updateLocalDependencyVersions(
@@ -201,15 +189,9 @@ export async function updateLocalDependencyVersions(
               ? `~${newVersion}`
               : newVersion;
 
-          if (deps[depName] !== newVersionSpec) {
-            if (dryRun) {
-              console.log(
-                `  [DRY RUN] Would update ${pkg.name} ${depType}.${depName}: ${oldVersion} -> ${newVersionSpec}`,
-              );
-            } else {
-              deps[depName] = newVersionSpec;
-              modified = true;
-            }
+          if (deps[depName] !== newVersionSpec && !dryRun) {
+            deps[depName] = newVersionSpec;
+            modified = true;
           }
         }
       }
@@ -220,7 +202,6 @@ export async function updateLocalDependencyVersions(
         pkg.packageJsonPath,
         `${JSON.stringify(packageJson, null, 2)}\n`,
       );
-      console.log(`  Updated local dependency versions in ${pkg.name}`);
     }
   }
 }

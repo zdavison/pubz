@@ -1,5 +1,9 @@
 import { spawn } from 'node:child_process';
 import { dim } from './colors.js';
+import { runClaudePrompt } from './claude.js';
+
+// Allow overriding gh command for testing/demo
+const GH_COMMAND = process.env.PUBZ_GH_COMMAND ?? 'gh';
 
 export interface ChangelogCommit {
 	sha: string;
@@ -108,11 +112,15 @@ function isReleaseCommit(message: string): boolean {
 	return /^chore: release v/.test(message);
 }
 
+function isMergeCommit(message: string): boolean {
+	return /^Merge /.test(message);
+}
+
 /**
  * Format changelog for terminal output with colored short SHAs.
  */
 export function formatChangelogTerminal(commits: ChangelogCommit[]): string {
-	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message) && !isMergeCommit(c.message));
 	if (filtered.length === 0) return '';
 
 	return filtered
@@ -127,7 +135,7 @@ export function formatChangelogMarkdown(
 	commits: ChangelogCommit[],
 	repoUrl: string | null,
 ): string {
-	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message) && !isMergeCommit(c.message));
 	if (filtered.length === 0) return '';
 
 	return filtered
@@ -180,6 +188,31 @@ export async function generateChangelog(
 }
 
 /**
+ * Generate AI-powered release notes using the `claude` CLI.
+ * Passes all commit messages to Claude and asks for a human-readable summary.
+ */
+export async function generateAIReleaseNotes(
+	commits: ChangelogCommit[],
+	version: string,
+): Promise<string | null> {
+	const filtered = commits.filter((c) => !isReleaseCommit(c.message));
+	if (filtered.length === 0) return null;
+
+	const commitList = filtered
+		.map((c) => `- ${c.sha} ${c.message}`)
+		.join('\n');
+
+	const prompt = `You are writing release notes for version ${version} of a software package.
+
+Here are the commits included in this release:
+${commitList}
+
+Write concise, user-friendly release notes in markdown. Group related changes under headings if appropriate (e.g. Features, Bug Fixes, Improvements). Focus on what changed and why it matters to users — not implementation details. Do not include a title or version header. Output only the markdown body.`;
+
+	return runClaudePrompt(prompt);
+}
+
+/**
  * Create a GitHub release using the gh CLI.
  */
 export async function createGitHubRelease(
@@ -196,7 +229,7 @@ export async function createGitHubRelease(
 	}
 
 	const result = await runSilent(
-		'gh',
+		GH_COMMAND,
 		['release', 'create', tagName, '--title', tagName, '--notes', body],
 		cwd,
 	);
