@@ -238,14 +238,17 @@ async function main() {
 
   // Discover packages
   let packages = await discoverPackages(cwd);
-  const publishablePackages = packages.filter((p) => !p.isPrivate);
+  // When skipping publish (e.g. for GitHub releases), private packages are fine
+  const publishablePackages = packages.filter((p) => options.skipPublish || !p.isPrivate);
 
   if (publishablePackages.length === 0) {
     console.log(yellow('No publishable packages found.'));
     console.log('');
     console.log(muted('Make sure your packages:'));
     console.log(muted('  - Have a package.json with a "name" field'));
-    console.log(muted('  - Do not have "private": true'));
+    if (!options.skipPublish) {
+      console.log(muted('  - Do not have "private": true'));
+    }
     console.log('');
     process.exit(1);
   }
