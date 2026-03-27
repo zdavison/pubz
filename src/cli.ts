@@ -238,14 +238,15 @@ async function main() {
 
   // Discover packages
   let packages = await discoverPackages(cwd);
-  const publishablePackages = packages.filter((p) => !p.isPrivate);
+  // When skipping publish, allow private packages — they won't be pushed to npm anyway
+  const publishablePackages = packages.filter((p) => !p.isPrivate || options.skipPublish);
 
   if (publishablePackages.length === 0) {
     console.log(yellow('No publishable packages found.'));
     console.log('');
     console.log(muted('Make sure your packages:'));
     console.log(muted('  - Have a package.json with a "name" field'));
-    console.log(muted('  - Do not have "private": true'));
+    console.log(muted('  - Do not have "private": true (or use --skip-publish for private packages)'));
     console.log('');
     process.exit(1);
   }
