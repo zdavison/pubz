@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { loadConfig } from './config.js';
 import { glob } from './glob.js';
 import type { DiscoveredPackage, PackageJson } from './types.js';
 
@@ -113,6 +114,7 @@ async function packageFromPath(
   packageJson: PackageJson,
   localDependencies: string[],
 ): Promise<DiscoveredPackage> {
+  const pkgConfig = loadConfig(path);
   return {
     name: packageJson.name,
     version: packageJson.version,
@@ -120,6 +122,8 @@ async function packageFromPath(
     packageJsonPath,
     isPrivate: packageJson.private === true,
     localDependencies,
+    skipPublish: pkgConfig['skip-publish'],
+    alwaysPublish: pkgConfig['always-publish'],
   };
 }
 

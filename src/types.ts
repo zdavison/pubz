@@ -16,6 +16,10 @@ export interface DiscoveredPackage {
   packageJsonPath: string;
   isPrivate: boolean;
   localDependencies: string[];
+  /** Set from a per-package `.pubz` file with `skip-publish`. Excludes this package from all processing. */
+  skipPublish?: boolean;
+  /** Set from a per-package `.pubz` file with `always-publish`. Includes this package even when root-level `skip-publish` is set. */
+  alwaysPublish?: boolean;
 }
 
 export interface PublishOptions {
