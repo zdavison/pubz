@@ -22,6 +22,7 @@ function run(
   command: string,
   args: string[],
   cwd: string,
+  options?: { silent?: boolean },
 ): Promise<{ code: number; output: string }> {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
@@ -33,17 +34,27 @@ function run(
 
     proc.stdout?.on('data', (data) => {
       output += data.toString();
-      process.stdout.write(DIM_ON + data.toString() + DIM_OFF);
+      if (!options?.silent) process.stdout.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.stderr?.on('data', (data) => {
       output += data.toString();
-      process.stderr.write(DIM_ON + data.toString() + DIM_OFF);
+      if (!options?.silent) process.stderr.write(DIM_ON + data.toString() + DIM_OFF);
     });
 
     proc.on('close', (code) => {
       resolve({ code: code ?? 1, output });
     });
+  });
+}
+
+/** Runs a command and returns only stdout, ignoring stderr. */
+function runStdout(command: string, args: string[], cwd: string): Promise<string> {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, { cwd, stdio: ['inherit', 'pipe', 'ignore'] });
+    let stdout = '';
+    proc.stdout?.on('data', (data) => { stdout += data.toString(); });
+    proc.on('close', () => resolve(stdout));
   });
 }
 
@@ -198,8 +209,8 @@ export async function publishPackage(
 export async function hasUncommittedChanges(
   cwd: string,
 ): Promise<{ hasChanges: boolean; files: string[] }> {
-  const result = await run('git', ['status', '--porcelain'], cwd);
-  const output = result.output.trim();
+  const stdout = await runStdout('git', ['status', '--porcelain'], cwd);
+  const output = stdout.trim();
   if (!output) {
     return { hasChanges: false, files: [] };
   }
@@ -219,8 +230,8 @@ export async function commitVersionBump(
   }
 
   // Check for uncommitted changes
-  const statusResult = await run('git', ['status', '--porcelain'], cwd);
-  if (!statusResult.output.trim()) {
+  const statusOutput = await runStdout('git', ['status', '--porcelain'], cwd);
+  if (!statusOutput.trim()) {
     return { success: true };
   }
 

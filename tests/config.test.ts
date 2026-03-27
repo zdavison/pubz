@@ -65,3 +65,24 @@ registry=https://npm.pkg.github.com
   expect(config['skip-publish']).toBe(true);
   expect(config.registry).toBe('https://npm.pkg.github.com');
 });
+
+test('parses always-publish bare flag', () => {
+  writeFileSync(join(tmpDir, '.pubz'), 'always-publish\n');
+  const config = loadConfig(tmpDir);
+  expect(config['always-publish']).toBe(true);
+});
+
+test('parses always-publish explicit values', () => {
+  writeFileSync(join(tmpDir, '.pubz'), 'always-publish=true\n');
+  expect(loadConfig(tmpDir)['always-publish']).toBe(true);
+
+  writeFileSync(join(tmpDir, '.pubz'), 'always-publish=false\n');
+  expect(loadConfig(tmpDir)['always-publish']).toBe(false);
+});
+
+test('parses skip-publish and always-publish together', () => {
+  writeFileSync(join(tmpDir, '.pubz'), 'skip-publish\nalways-publish\n');
+  const config = loadConfig(tmpDir);
+  expect(config['skip-publish']).toBe(true);
+  expect(config['always-publish']).toBe(true);
+});
