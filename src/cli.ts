@@ -238,8 +238,13 @@ async function main() {
 
   // Discover packages
   let packages = await discoverPackages(cwd);
-  // When skipping publish, allow private packages — they won't be pushed to npm anyway
-  const publishablePackages = packages.filter((p) => !p.isPrivate || options.skipPublish);
+  // Per-package .pubz rules: always-publish overrides everything; skip-publish excludes entirely.
+  // When skipping publish globally, allow private packages — they won't be pushed to npm anyway.
+  const publishablePackages = packages.filter((p) => {
+    if (p.alwaysPublish) return true;
+    if (p.skipPublish) return false;
+    return !p.isPrivate || options.skipPublish;
+  });
 
   if (publishablePackages.length === 0) {
     console.log(yellow('No publishable packages found.'));
@@ -247,6 +252,7 @@ async function main() {
     console.log(muted('Make sure your packages:'));
     console.log(muted('  - Have a package.json with a "name" field'));
     console.log(muted('  - Do not have "private": true (or use --skip-publish for private packages)'));
+    console.log(muted('  - Do not have "skip-publish" in a per-package .pubz file'));
     console.log('');
     process.exit(1);
   }
@@ -415,7 +421,12 @@ async function main() {
 
   // ── Publish ────────────────────────────────────────────────────────────────
 
-  if (options.skipPublish) {
+  // When skip-publish is set globally, only publish packages with always-publish in their .pubz.
+  const packagesToPublish = options.skipPublish
+    ? packages.filter((p) => p.alwaysPublish)
+    : packages;
+
+  if (packagesToPublish.length === 0) {
     console.log(yellow(bold('⏭️  Skipping npm publish')) + dim(' — use without --skip-publish to publish to npm'));
     console.log('');
   } else {
@@ -445,7 +456,7 @@ async function main() {
       console.log(`Publishing to ${cyan(registry)}:`);
     }
     console.log('');
-    for (const pkg of packages) {
+    for (const pkg of packagesToPublish) {
       console.log(`  ${dim('•')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
     }
     console.log('');
@@ -502,7 +513,7 @@ async function main() {
     frameLine(dim('Preparing packages...'));
 
     const workspaceTransforms = await transformWorkspaceProtocolForPublish(
-      packages,
+      packagesToPublish,
       newVersion,
       options.dryRun,
     );
@@ -519,7 +530,7 @@ async function main() {
     let failedError = '';
 
     try {
-      for (const pkg of packages) {
+      for (const pkg of packagesToPublish) {
         if (options.dryRun) {
           frameLine(`  ${dim('[dry run]')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
         } else {
@@ -563,7 +574,7 @@ async function main() {
     }
   }
 
-  if (!options.skipPublish) {
+  if (packagesToPublish.length > 0) {
     console.log('✅ ' + green(bold(`Published v${newVersion}!`)));
     console.log('');
   }

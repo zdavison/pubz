@@ -11,11 +11,12 @@ const CONFIG_FILENAME = '.pubz';
 export interface PubzConfig {
   'skip-build'?: boolean;
   'skip-publish'?: boolean;
+  'always-publish'?: boolean;
   registry?: string;
 }
 
 /** All keys that are valid in a `.pubz` config file. */
-const VALID_KEYS = new Set<string>(['skip-build', 'skip-publish', 'registry']);
+const VALID_KEYS = new Set<string>(['skip-build', 'skip-publish', 'always-publish', 'registry']);
 
 /**
  * Load and parse a `.pubz` config file from the given directory.
@@ -70,7 +71,7 @@ export function loadConfig(cwd: string): PubzConfig {
       config.registry = value ?? '';
     } else {
       // Boolean flags: bare key or explicit true/false
-      const boolKey = key as 'skip-build' | 'skip-publish';
+      const boolKey = key as 'skip-build' | 'skip-publish' | 'always-publish';
       if (value === undefined || value === 'true') {
         config[boolKey] = true;
       } else if (value === 'false') {
