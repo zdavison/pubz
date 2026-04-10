@@ -52,15 +52,18 @@ describe('per-package skip-publish flag', () => {
     expect(publishCalls[0].cwd).toContain('pkg-a');
   });
 
-  it('exits with error when all packages have skip-publish', async () => {
+  it('succeeds with version bump when all packages have skip-publish', async () => {
     writePubzConfig(workspace, 'packages/pkg-a', 'skip-publish\n');
     writePubzConfig(workspace, 'packages/pkg-b', 'skip-publish\n');
     gitCommitAll(workspace, 'add skip-publish to all packages');
 
     const result = await runPubz(workspace, ['--ci', '--version', 'patch', '--skip-build']);
 
-    expect(result.code).not.toBe(0);
-    expect(result.stdout).toContain('No publishable packages');
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Skipping npm publish');
+
+    const publishCalls = workspace.getNpmCalls().filter((c) => c.args[0] === 'publish');
+    expect(publishCalls.length).toBe(0);
   });
 
   it('respects skip-publish=true explicit form', async () => {

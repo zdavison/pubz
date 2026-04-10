@@ -1,0 +1,5 @@
+{
+  "name": "test-workspace-exact",
+  "private": true,
+  "workspaces": ["srb"]
+}

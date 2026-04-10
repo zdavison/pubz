@@ -238,12 +238,13 @@ async function main() {
 
   // Discover packages
   let packages = await discoverPackages(cwd);
-  // Per-package .pubz rules: always-publish overrides everything; skip-publish excludes entirely.
-  // When skipping publish globally, allow private packages — they won't be pushed to npm anyway.
+  // Per-package .pubz rules: always-publish overrides everything.
+  // Per-package skip-publish only skips the npm publish step, not the entire flow.
+  // Private packages are included when skip-publish is set (globally or per-package).
   const publishablePackages = packages.filter((p) => {
     if (p.alwaysPublish) return true;
-    if (p.skipPublish) return false;
-    return !p.isPrivate || options.skipPublish;
+    if (p.isPrivate) return p.skipPublish || options.skipPublish;
+    return true;
   });
 
   if (publishablePackages.length === 0) {
@@ -421,10 +422,12 @@ async function main() {
 
   // ── Publish ────────────────────────────────────────────────────────────────
 
-  // When skip-publish is set globally, only publish packages with always-publish in their .pubz.
-  const packagesToPublish = options.skipPublish
-    ? packages.filter((p) => p.alwaysPublish)
-    : packages;
+  // Skip npm publish for packages with per-package or global skip-publish, unless always-publish overrides.
+  const packagesToPublish = packages.filter((p) => {
+    if (p.alwaysPublish) return true;
+    if (p.skipPublish || options.skipPublish) return false;
+    return true;
+  });
 
   if (packagesToPublish.length === 0) {
     console.log(yellow(bold('⏭️  Skipping npm publish')) + dim(' — use without --skip-publish to publish to npm'));

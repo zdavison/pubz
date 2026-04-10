@@ -6,11 +6,24 @@ export async function glob(pattern: string, cwd: string): Promise<string[]> {
   // Supports: packages/*, packages/**, src/*
   const results: string[] = [];
 
+  // Check if pattern is an exact directory (no glob suffix)
+  const isGlob = /\/\*\*?$/.test(pattern);
+
   // Remove trailing /* or /**
   const basePattern = pattern.replace(/\/\*\*?$/, '');
   const isRecursive = pattern.endsWith('/**');
 
   const basePath = join(cwd, basePattern);
+
+  // Exact directory reference (e.g. "srb") — check if it has a package.json directly
+  if (!isGlob) {
+    try {
+      await stat(join(basePath, 'package.json'));
+      return [basePattern];
+    } catch {
+      // No package.json at this path, fall through to subdirectory scan
+    }
+  }
 
   try {
     const entries = await readdir(basePath, { withFileTypes: true });
