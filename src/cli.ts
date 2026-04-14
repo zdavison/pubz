@@ -16,7 +16,7 @@ import {
   yellow,
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
-import { closePrompt, confirm, multiSelect, pausePrompt, prompt, resetPrompt, select } from './prompts.js';
+import { closePrompt, confirm, confirmOrEdit, multiSelect, openInEditor, pausePrompt, prompt, resetPrompt, select } from './prompts.js';
 import { checkNpmAuth, npmLogin } from './auth.js';
 import { debug, setVerbose } from './log.js';
 import {
@@ -636,6 +636,13 @@ async function main() {
         console.log('');
       }
     }
+  }
+
+  if (releaseNotes && !skipConfirms) {
+    const choice = await confirmOrEdit('Use these release notes?');
+    if (choice === 'no') releaseNotes = '';
+    else if (choice === 'edit') releaseNotes = openInEditor(releaseNotes);
+    console.log('');
   }
 
   const errors: string[] = [];
