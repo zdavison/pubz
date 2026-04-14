@@ -266,6 +266,16 @@ export async function commitVersionBump(
   return { success: true };
 }
 
+export async function resetVersionBumpCommit(
+  cwd: string,
+): Promise<{ success: boolean; error?: string }> {
+  const result = await run('git', ['reset', '--hard', 'HEAD~1'], cwd);
+  if (result.code !== 0) {
+    return { success: false, error: 'Failed to reset version bump commit' };
+  }
+  return { success: true };
+}
+
 export async function createGitTag(
   version: string,
   cwd: string,

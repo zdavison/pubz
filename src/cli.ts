@@ -17,7 +17,6 @@ import {
 } from './colors.js';
 import { discoverPackages, sortByDependencyOrder } from './discovery.js';
 import { closePrompt, confirm, multiSelect, pausePrompt, prompt, resetPrompt, select } from './prompts.js';
-import { checkNpmAuth, npmLogin } from './auth.js';
 import { debug, setVerbose } from './log.js';
 import {
   commitVersionBump,
@@ -26,6 +25,7 @@ import {
   isVersionPublished,
   publishPackage,
   pushGitTag,
+  resetVersionBumpCommit,
   runBuild,
   verifyBuild,
   type PublishContext,
@@ -488,42 +488,6 @@ async function main() {
 
     frameHeader('🚀 Publish');
 
-    // Auth verification (skip in dry run mode and CI mode)
-    if (!options.dryRun && !options.ci) {
-      frameLine(dim('Verifying authentication...'));
-      const authResult = await checkNpmAuth(registry);
-
-      if (!authResult.authenticated) {
-        frameLine(yellow('Not authenticated.') + dim(' Starting login...'));
-        frameLine();
-
-        pausePrompt();
-        const loginResult = await npmLogin(registry);
-        resetPrompt();
-
-        if (!loginResult.success) {
-          frameFooter();
-          console.error(red(bold('Login failed:')) + ` ${loginResult.error}`);
-          closePrompt();
-          process.exit(1);
-        }
-
-        const verifyAuth = await checkNpmAuth(registry);
-        if (!verifyAuth.authenticated) {
-          frameFooter();
-          console.error(red(bold('Error:')) + ' Login did not complete successfully.');
-          closePrompt();
-          process.exit(1);
-        }
-
-        frameLine(green('Logged in as') + ` ${cyan(verifyAuth.username ?? 'unknown')}`);
-        frameLine();
-      } else {
-        frameLine(dim(`Authenticated as ${cyan(authResult.username ?? 'unknown')}`));
-        frameLine();
-      }
-    }
-
     frameLine(dim('Preparing packages...'));
 
     const workspaceTransforms = await transformWorkspaceProtocolForPublish(
@@ -580,6 +544,17 @@ async function main() {
       frameFooter();
       console.error(red(bold('Failed to publish')) + ` ${cyan(failedPackageName)}: ${failedError}`);
       console.log('');
+
+      if (didBump && !options.dryRun) {
+        console.error(dim('Rolling back version bump...'));
+        const rollbackResult = await resetVersionBumpCommit(cwd);
+        if (rollbackResult.success) {
+          console.error(dim('Version bump rolled back.'));
+        } else {
+          console.error(yellow('Warning: could not roll back version bump commit. Run `git reset --hard HEAD~1` manually.'));
+        }
+      }
+
       console.error(red('Stopping publish process.'));
       closePrompt();
       process.exit(1);
