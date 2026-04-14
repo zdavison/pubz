@@ -1,4 +1,8 @@
 import * as readline from 'node:readline';
+import { tmpdir } from 'node:os';
+import { writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import { bold, cyan, dim, green, muted, yellow } from './colors.js';
 
 let rl = readline.createInterface({
@@ -197,4 +201,55 @@ export async function multiSelect<T>(
 
     stdin.on('data', onKeypress);
   });
+}
+
+export function parseConfirmOrEditInput(input: string): 'yes' | 'no' | 'edit' {
+  const normalized = input.trim().toLowerCase();
+  if (normalized === 'n') return 'no';
+  if (normalized === 'e') return 'edit';
+  return 'yes';
+}
+
+export async function confirmOrEdit(message: string): Promise<'yes' | 'no' | 'edit'> {
+  const answer = await prompt(`${cyan('?')} ${message} ${dim('[')}${bold('Y')}${dim('/n/e to edit]')} `);
+  return parseConfirmOrEditInput(answer);
+}
+
+/** Synchronous — blocks the event loop until the editor process exits. */
+export function openInEditor(content: string): string {
+  const tmpFile = join(tmpdir(), `pubz-release-notes-${Date.now()}.md`);
+
+  try {
+    writeFileSync(tmpFile, content, 'utf-8');
+  } catch {
+    console.warn(yellow('Warning: could not write temp file for editor. Using original notes.'));
+    return content;
+  }
+
+  pausePrompt();
+  const editor = process.env.VISUAL ?? process.env.EDITOR ?? 'vi';
+  let result: ReturnType<typeof spawnSync>;
+  try {
+    result = spawnSync(editor, [tmpFile], { stdio: 'inherit' });
+  } finally {
+    resetPrompt();
+  }
+
+  if (result.error || result.status !== 0) {
+    const reason = result.error
+      ? `could not launch editor (${result.error.message})`
+      : 'editor exited with an error';
+    console.warn(yellow(`Warning: ${reason}. Using original notes.`));
+    try { unlinkSync(tmpFile); } catch { /* ignore */ }
+    return content;
+  }
+
+  let edited = content;
+  try {
+    edited = readFileSync(tmpFile, 'utf-8');
+  } catch {
+    console.warn(yellow('Warning: could not read edited file. Using original notes.'));
+  }
+  try { unlinkSync(tmpFile); } catch { /* ignore */ }
+  return edited;
 }
