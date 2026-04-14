@@ -228,6 +228,13 @@ export async function createGitHubRelease(
 		return { success: true };
 	}
 
+	// Check if release already exists (idempotent re-run)
+	const existing = await runSilent(GH_COMMAND, ['release', 'view', tagName], cwd);
+	if (existing.code === 0) {
+		const url = existing.output.trim().split('\n').find((l) => l.startsWith('https://'))?.trim();
+		return { success: true, url };
+	}
+
 	const result = await runSilent(
 		GH_COMMAND,
 		['release', 'create', tagName, '--title', tagName, '--notes', body],
