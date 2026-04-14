@@ -211,10 +211,11 @@ export function parseConfirmOrEditInput(input: string): 'yes' | 'no' | 'edit' {
 }
 
 export async function confirmOrEdit(message: string): Promise<'yes' | 'no' | 'edit'> {
-  const answer = await prompt(`${cyan('?')} ${message} ${dim('[Y/n/e to edit]')} `);
+  const answer = await prompt(`${cyan('?')} ${message} ${dim('[')}${bold('Y')}${dim('/n/e to edit]')} `);
   return parseConfirmOrEditInput(answer);
 }
 
+/** Synchronous — blocks the event loop until the editor process exits. */
 export function openInEditor(content: string): string {
   const tmpFile = join(tmpdir(), `pubz-release-notes-${Date.now()}.md`);
 
@@ -227,11 +228,18 @@ export function openInEditor(content: string): string {
 
   pausePrompt();
   const editor = process.env.VISUAL ?? process.env.EDITOR ?? 'vi';
-  const result = spawnSync(editor, [tmpFile], { stdio: 'inherit' });
-  resetPrompt();
+  let result: ReturnType<typeof spawnSync>;
+  try {
+    result = spawnSync(editor, [tmpFile], { stdio: 'inherit' });
+  } finally {
+    resetPrompt();
+  }
 
-  if (result.status !== 0) {
-    console.warn(yellow('Warning: editor exited with an error. Using original notes.'));
+  if (result.error || result.status !== 0) {
+    const reason = result.error
+      ? `could not launch editor (${result.error.message})`
+      : 'editor exited with an error';
+    console.warn(yellow(`Warning: ${reason}. Using original notes.`));
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
     return content;
   }
