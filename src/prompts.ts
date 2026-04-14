@@ -198,3 +198,10 @@ export async function multiSelect<T>(
     stdin.on('data', onKeypress);
   });
 }
+
+export function parseConfirmOrEditInput(input: string): 'yes' | 'no' | 'edit' {
+  const normalized = input.trim().toLowerCase();
+  if (normalized === 'n') return 'no';
+  if (normalized === 'e') return 'edit';
+  return 'yes';
+}
