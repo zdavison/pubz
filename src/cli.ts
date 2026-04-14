@@ -23,6 +23,7 @@ import {
   commitVersionBump,
   createGitTag,
   hasUncommittedChanges,
+  isVersionPublished,
   publishPackage,
   pushGitTag,
   runBuild,
@@ -356,32 +357,42 @@ async function main() {
   }
 
   if (didBump) {
-    frameHeader('🔖 Version');
-    if (options.version && ['patch', 'minor', 'major'].includes(options.version)) {
-      frameLine(`Bumping (${options.version}): ${yellow(currentVersion)} → ${green(newVersion)}`);
+    // Check if version is already set (idempotent re-run)
+    const onDiskVersion = JSON.parse(readFileSync(packages[0].packageJsonPath, 'utf-8')).version;
+    if (onDiskVersion === newVersion) {
+      console.log(dim(`⏭ Version already set to ${newVersion}, skipping bump`));
+      console.log('');
+      for (const pkg of packages) {
+        pkg.version = newVersion;
+      }
     } else {
-      frameLine(`${yellow(currentVersion)} → ${green(newVersion)}`);
-    }
-    frameLine(dim('Updating all packages...'));
+      frameHeader('🔖 Version');
+      if (options.version && ['patch', 'minor', 'major'].includes(options.version)) {
+        frameLine(`Bumping (${options.version}): ${yellow(currentVersion)} → ${green(newVersion)}`);
+      } else {
+        frameLine(`${yellow(currentVersion)} → ${green(newVersion)}`);
+      }
+      frameLine(dim('Updating all packages...'));
 
-    for (const pkg of packages) {
-      await updatePackageVersion(pkg, newVersion, options.dryRun);
-    }
-    await updateLocalDependencyVersions(packages, newVersion, options.dryRun);
-    for (const pkg of packages) {
-      pkg.version = newVersion;
-    }
+      for (const pkg of packages) {
+        await updatePackageVersion(pkg, newVersion, options.dryRun);
+      }
+      await updateLocalDependencyVersions(packages, newVersion, options.dryRun);
+      for (const pkg of packages) {
+        pkg.version = newVersion;
+      }
 
-    const commitResult = await commitVersionBump(newVersion, cwd, options.dryRun);
-    if (!commitResult.success) {
+      const commitResult = await commitVersionBump(newVersion, cwd, options.dryRun);
+      if (!commitResult.success) {
+        frameFooter();
+        console.error(red(bold('Failed to commit version bump:')) + ` ${commitResult.error}`);
+        closePrompt();
+        process.exit(1);
+      }
+
       frameFooter();
-      console.error(red(bold('Failed to commit version bump:')) + ` ${commitResult.error}`);
-      closePrompt();
-      process.exit(1);
+      console.log('');
     }
-
-    frameFooter();
-    console.log('');
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -537,6 +548,12 @@ async function main() {
         if (options.dryRun) {
           frameLine(`  ${dim('[dry run]')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)}`);
         } else {
+          // Check if already published (idempotent re-run)
+          const alreadyPublished = await isVersionPublished(pkg.name, newVersion, registry);
+          if (alreadyPublished) {
+            frameLine(`  ${dim('⏭')} ${cyan(pkg.name)}${dim('@')}${yellow(newVersion)} ${dim('already published, skipping')}`);
+            continue;
+          }
           frameLine(dim(`  Publishing ${pkg.name}...`));
         }
 

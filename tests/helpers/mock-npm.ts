@@ -43,6 +43,26 @@ if (!existsSync(dir)) {
 // Append call to log file (one JSON object per line)
 appendFileSync(logFile, JSON.stringify(call) + '\n');
 
+// Handle npm view for idempotency checks
+if (process.argv[2] === 'view') {
+  // Parse name@version from args: npm view @test/pkg-a@1.0.1 version --registry ...
+  const nameAtVersion = process.argv[3] ?? '';
+  const publishedVersionsJson = process.env.MOCK_NPM_PUBLISHED_VERSIONS;
+  if (publishedVersionsJson) {
+    const published: Record<string, boolean> = JSON.parse(publishedVersionsJson);
+    if (published[nameAtVersion]) {
+      // Extract version: last segment after @ (handles scoped packages like @test/pkg-a@1.0.1)
+      const atIdx = nameAtVersion.lastIndexOf('@');
+      const version = nameAtVersion.slice(atIdx + 1);
+      console.log(version);
+      process.exit(0);
+    }
+  }
+  // Not found on registry
+  console.error(`npm ERR! 404 Not Found - GET ${nameAtVersion}`);
+  process.exit(1);
+}
+
 // Simulate npm publish output
 if (process.argv[2] === 'publish') {
   console.log(`npm notice`);

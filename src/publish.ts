@@ -160,6 +160,19 @@ export interface PublishContext {
 // Allow overriding npm command for testing
 const NPM_COMMAND = process.env.PUBZ_NPM_COMMAND ?? 'npm';
 
+export async function isVersionPublished(
+  packageName: string,
+  version: string,
+  registry: string,
+): Promise<boolean> {
+  const result = await runStdout(
+    NPM_COMMAND,
+    ['view', `${packageName}@${version}`, 'version', '--registry', registry],
+    homedir(),
+  );
+  return result.trim() === version;
+}
+
 export async function publishPackage(
   pkg: DiscoveredPackage,
   registry: string,
@@ -264,11 +277,17 @@ export async function createGitTag(
     return { success: true };
   }
 
+  // Check if tag already exists (idempotent re-run)
+  const existing = await runStdout('git', ['tag', '-l', tagName], cwd);
+  if (existing.trim() === tagName) {
+    return { success: true };
+  }
+
   const tagResult = await run('git', ['tag', tagName], cwd);
   if (tagResult.code !== 0) {
     return {
       success: false,
-      error: `Failed to create tag ${tagName} (may already exist)`,
+      error: `Failed to create tag ${tagName}`,
     };
   }
 
