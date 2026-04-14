@@ -1,4 +1,8 @@
 import * as readline from 'node:readline';
+import { tmpdir } from 'node:os';
+import { writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import { bold, cyan, dim, green, muted, yellow } from './colors.js';
 
 let rl = readline.createInterface({
@@ -204,4 +208,40 @@ export function parseConfirmOrEditInput(input: string): 'yes' | 'no' | 'edit' {
   if (normalized === 'n') return 'no';
   if (normalized === 'e') return 'edit';
   return 'yes';
+}
+
+export async function confirmOrEdit(message: string): Promise<'yes' | 'no' | 'edit'> {
+  const answer = await prompt(`${cyan('?')} ${message} ${dim('[Y/n/e to edit]')} `);
+  return parseConfirmOrEditInput(answer);
+}
+
+export function openInEditor(content: string): string {
+  const tmpFile = join(tmpdir(), `pubz-release-notes-${Date.now()}.md`);
+
+  try {
+    writeFileSync(tmpFile, content, 'utf-8');
+  } catch {
+    console.warn(yellow('Warning: could not write temp file for editor. Using original notes.'));
+    return content;
+  }
+
+  pausePrompt();
+  const editor = process.env.VISUAL ?? process.env.EDITOR ?? 'vi';
+  const result = spawnSync(editor, [tmpFile], { stdio: 'inherit' });
+  resetPrompt();
+
+  if (result.status !== 0) {
+    console.warn(yellow('Warning: editor exited with an error. Using original notes.'));
+    try { unlinkSync(tmpFile); } catch { /* ignore */ }
+    return content;
+  }
+
+  let edited = content;
+  try {
+    edited = readFileSync(tmpFile, 'utf-8');
+  } catch {
+    console.warn(yellow('Warning: could not read edited file. Using original notes.'));
+  }
+  try { unlinkSync(tmpFile); } catch { /* ignore */ }
+  return edited;
 }
